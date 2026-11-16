@@ -10,7 +10,7 @@ Use an Apple Developer ID Application certificate (with its private key in the l
 4. Store notarization credentials in the Keychain:
 
    ```sh
-   xcrun notarytool store-credentials clipboard-remix-notary
+   xcrun notarytool store-credentials clipboard-remix-notary --keychain "$HOME/Library/Keychains/login.keychain-db"
    ```
 
    This prompts for your Apple Account, team ID, and an app-specific password. Keep secrets out of Git and command history. An App Store Connect API key is another supported authentication method. Never use your ordinary Apple Account password as an app-specific password.
@@ -34,7 +34,7 @@ Pass the printed release directory into the next commands:
 
 Submission returns without waiting. If `finish` reports `In Progress`, Apple is still processing; run it again later. A rejection produces a log for investigation and no distribution ZIP. Once accepted, the script staples and validates the ticket, checks Gatekeeper acceptance, and creates `Clipboard-Remix-0.1.0-arm64.zip` plus its SHA-256 checksum. It never publishes a GitHub Release automatically.
 
-Use `NOTARY_PROFILE` to choose a different Keychain profile and `CLIPBOARD_BUILD_ROOT` for a different build volume. Signing credentials and private keys never belong in the release directory or repository.
+Use `NOTARY_PROFILE` to choose a different Keychain profile, `NOTARY_KEYCHAIN` to select its Keychain (default: login), and `CLIPBOARD_BUILD_ROOT` for a different build volume. Signing credentials and private keys never belong in the release directory or repository.
 
 ## Before publishing
 

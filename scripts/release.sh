@@ -4,6 +4,7 @@ set -euo pipefail
 cd "${0:A:h:h}"
 BUILD_ROOT="${CLIPBOARD_BUILD_ROOT:-/Volumes/Expansion/pastebot-remix-build}"
 PROFILE="${NOTARY_PROFILE:-clipboard-remix-notary}"
+NOTARY_KEYCHAIN="${NOTARY_KEYCHAIN:-$HOME/Library/Keychains/login.keychain-db}"
 fail() { print -u2 -- "$*"; exit 1; }
 [[ -d "$BUILD_ROOT" ]] || fail "Build directory is unavailable: $BUILD_ROOT"
 case "${1:-}" in
@@ -29,7 +30,7 @@ case "${1:-}" in
     RELEASE_DIR="${2:?Supply the release directory printed by prepare}"
     [[ -f "$RELEASE_DIR/submission.zip" ]] || fail 'No prepared submission.zip.'
     [[ ! -e "$RELEASE_DIR/submission.json" ]] || fail 'A submission already exists; use finish to check it instead of uploading again.'
-    xcrun notarytool submit "$RELEASE_DIR/submission.zip" --keychain-profile "$PROFILE" --no-wait --output-format json > "$RELEASE_DIR/submission.pending.json"
+    xcrun notarytool submit "$RELEASE_DIR/submission.zip" --keychain-profile "$PROFILE" --keychain "$NOTARY_KEYCHAIN" --no-wait --output-format json > "$RELEASE_DIR/submission.pending.json"
     mv "$RELEASE_DIR/submission.pending.json" "$RELEASE_DIR/submission.json"
     print -- "Submitted. Run finish with this directory to check acceptance and package: $RELEASE_DIR"
     ;;
@@ -37,11 +38,11 @@ case "${1:-}" in
     RELEASE_DIR="${2:?Supply the release directory printed by prepare}"
     [[ -f "$RELEASE_DIR/submission.json" ]] || fail 'No submission receipt.'
     SUBMISSION_ID="$(/usr/bin/plutil -extract id raw -o - "$RELEASE_DIR/submission.json")"
-    xcrun notarytool info "$SUBMISSION_ID" --keychain-profile "$PROFILE" --output-format json > "$RELEASE_DIR/notarization.json"
+    xcrun notarytool info "$SUBMISSION_ID" --keychain-profile "$PROFILE" --keychain "$NOTARY_KEYCHAIN" --output-format json > "$RELEASE_DIR/notarization.json"
     RESULT="$(/usr/bin/plutil -extract status raw -o - "$RELEASE_DIR/notarization.json")"
     if [[ "$RESULT" != Accepted ]]; then
       if [[ "$RESULT" == Invalid || "$RESULT" == Rejected ]]; then
-        xcrun notarytool log "$SUBMISSION_ID" --keychain-profile "$PROFILE" "$RELEASE_DIR/notarization-log.json"
+        xcrun notarytool log "$SUBMISSION_ID" --keychain-profile "$PROFILE" --keychain "$NOTARY_KEYCHAIN" "$RELEASE_DIR/notarization-log.json"
       fi
       fail "Apple status: $RESULT. No distribution ZIP created."
     fi
