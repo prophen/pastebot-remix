@@ -37,7 +37,14 @@ struct PaletteView: View {
                     Button("Open Storage Folder") { NSWorkspace.shared.open(model.store.root) }
                     Divider()
                     Button("Quit Clipboard Remix") { NSApp.terminate(nil) }
-                } label: { Image(systemName: "gearshape") }.menuStyle(.borderlessButton).frame(width: 24)
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13))
+                        .padding(.trailing, 8)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(width: 40, height: 24)
+                .accessibilityLabel("Clipboard controls")
                 Text(model.paused ? "Capture paused" : "\(model.items.count) saved")
                     .foregroundStyle(model.paused ? .orange : .secondary)
                 Spacer()
