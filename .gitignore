@@ -2,3 +2,10 @@
 .build/
 .swiftpm/
 *.app/
+
+# Signing credentials stay in Keychain or outside the repository.
+*.p12
+*.p8
+*.pem
+*.key
+*.certSigningRequest

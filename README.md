@@ -11,7 +11,7 @@ open "/Volumes/Expansion/pastebot-remix-build/Clipboard Remix.app"
 
 The script uses Command Line Tools and the installed macOS 26.5 SDK. Build products, temporary files, and task-specific compiler caches live under `/Volumes/Expansion/pastebot-remix-build`. Mount Expansion first. For a different build location, set `CLIPBOARD_BUILD_ROOT`. No package dependencies are downloaded.
 
-The app is ad-hoc signed for local development. It is not notarized or ready for public distribution. Keep the external drive mounted while running this copy of the app.
+The default build is ad-hoc signed for local development. For Developer ID signing, Apple notarization, and a shareable ZIP, see [RELEASE.md](RELEASE.md). Keep the external drive mounted while running this copy of the app.
 
 ## Use
 
