@@ -42,6 +42,15 @@ Seven check groups cover:
 - Storage limits are fixed at 500 entries / 500 MB of image files, rather than exposed as settings. Shortcut choice is limited to two presets.
 - Polling can miss copies less than 0.4 seconds apart; a bounded queue skips copies if processing falls behind and reports it in the palette.
 - Captured text and images are local and unencrypted. Sensitive marker handling is best effort.
-- Distribution signing/notarization, login launch, and the explicitly deferred features are not implemented.
+- Login launch and the explicitly deferred product features are not implemented. Public download testing on another Mac is still pending.
 
 The test document created in TextEdit and the two demonstration history entries are left available for inspection. The generated PNG fixture is under `/Volumes/Expansion/pastebot-remix-build/clipboard-test.png`.
+
+## Developer ID release verification
+
+- Developer ID Application signing succeeded with hardened runtime and a secure timestamp.
+- Apple accepted notarization submission `9c41ab05-56bd-43ba-9155-dbb397ee254c` on November 16, 2026.
+- The notarization ticket was stapled and validated.
+- The final ZIP was extracted into a fresh directory; signature validation, ticket validation, and Gatekeeper assessment all passed (`source=Notarized Developer ID`).
+- The notarized app launched successfully and loaded the existing history.
+- The final archive is `Clipboard-Remix-0.1.0-arm64.zip`, for Apple Silicon. It has not been published as a GitHub Release.
