@@ -1,35 +1,38 @@
 import Foundation
+import AppKit
 import UniformTypeIdentifiers
 import ClipboardCore
 
 @MainActor final class PNGDragTests {
     func testProviderSnapshotAndRepresentations() async throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("drag-test-" + UUID().uuidString)
+        let root = checkTemporaryDirectory.appendingPathComponent("drag-test-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let history = try HistoryStore(root: root.appendingPathComponent("History"))
         let clip = try await history.capture(.image(HistoryStoreTests().png()))
         let png = try await history.imageData(for: clip)
         let exports = PNGDragExportStore(root: root.appendingPathComponent("Exports"))
-        let provider = PNGDragProvider.make(png: png, exports: exports)
-        expectTrue(provider.hasItemConformingToTypeIdentifier(UTType.png.identifier))
-        expectTrue(provider.hasItemConformingToTypeIdentifier(UTType.image.identifier))
-        expectEqual(provider.suggestedName, "Clipboard-Remix.png")
-        // Merely starting/cancelling a drag creates no file and changes no history.
-        expectFalse(FileManager.default.fileExists(atPath: exports.root.path))
+        let snapshot = try await PNGDragProvider.prepare(png: png, exports: exports)
+        let board = NSPasteboard(name: .init("ClipboardRemix.DragChecks.\(UUID())"))
+        defer { board.releaseGlobally() }
+        expectTrue(board.writeObjects([snapshot]))
+        expectTrue(board.types?.contains(.fileURL) == true)
+        expectEqual(board.data(forType: .png), png)
+        let files = board.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]
+        expectEqual(files, [snapshot.file])
+        expectEqual(snapshot.file.pathExtension, "png")
         expectEqual(try await history.load().map(\.id), [clip.id])
-        // The provider owns a snapshot; subsequent real history eviction cannot
-        // invalidate a receiving app's request (only this disposable fixture is deleted).
+        // A concrete file remains readable throughout a drag and after fixture
+        // history deletion. This is the file representation browser uploads need.
         try await history.delete(clip.id)
-        let data = try await loadData(provider)
-        expectEqual(data, png)
-        let receivedFileData = try await loadFileBytes(provider)
-        expectEqual(receivedFileData, png)
+        expectEqual(try Data(contentsOf: snapshot.file), png)
+        try await exports.cleanup(now: Date().addingTimeInterval(8 * 24 * 60 * 60))
+        expectEqual(try Data(contentsOf: snapshot.file), png)
         expectTrue(try await history.load().isEmpty)
     }
 
     func testExportRetentionAndMissingVolume() async throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("drag-retention-" + UUID().uuidString)
+        let root = checkTemporaryDirectory.appendingPathComponent("drag-retention-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let exports = PNGDragExportStore(root: root.appendingPathComponent("Exports"), retention: 60)
@@ -54,6 +57,16 @@ import ClipboardCore
         expectFalse(FileManager.default.fileExists(atPath: file.path))
         expectTrue(FileManager.default.fileExists(atPath: unrelated.path))
         expectTrue(FileManager.default.fileExists(atPath: unknown.path))
+        // A preview may remain selected beyond retention before the user drags.
+        // Its release must start a fresh grace period for the receiver.
+        let aged = try await exports.export(png, now: now.addingTimeInterval(-600))
+        try await exports.cleanup(now: now)
+        expectTrue(FileManager.default.fileExists(atPath: aged.path))
+        await exports.finish(aged, now: now)
+        try await exports.cleanup(now: now.addingTimeInterval(30))
+        expectTrue(FileManager.default.fileExists(atPath: aged.path))
+        try await exports.cleanup(now: now.addingTimeInterval(120))
+        expectFalse(FileManager.default.fileExists(atPath: aged.path))
         let actualVolume = try unwrap(root.resourceValues(forKeys: [.volumeURLKey]).volume)
         let onVolume = PNGDragExportStore(root: root.appendingPathComponent("CheckedVolume"), requiredVolume: actualVolume)
         let onVolumeFile = try await onVolume.export(png)
@@ -68,22 +81,4 @@ import ClipboardCore
         expectFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("unmounted").path))
     }
 
-    private func loadData(_ provider: NSItemProvider) async throws -> Data {
-        try await withCheckedThrowingContinuation { continuation in
-            _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.png.identifier) { data, error in
-                if let data { continuation.resume(returning: data) }
-                else { continuation.resume(throwing: error ?? CheckError.nilValue) }
-            }
-        }
-    }
-    private func loadFileBytes(_ provider: NSItemProvider) async throws -> Data {
-        try await withCheckedThrowingContinuation { continuation in
-            _ = provider.loadFileRepresentation(forTypeIdentifier: UTType.png.identifier) { url, error in
-                // The consumer must use/copy the system's file before returning.
-                guard let url else { continuation.resume(throwing: error ?? CheckError.nilValue); return }
-                do { continuation.resume(returning: try Data(contentsOf: url)) }
-                catch { continuation.resume(throwing: error) }
-            }
-        }
-    }
 }

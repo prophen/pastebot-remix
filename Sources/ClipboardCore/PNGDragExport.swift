@@ -1,8 +1,9 @@
 import Foundation
+import AppKit
 import UniformTypeIdentifiers
 
 /// Independent copies for drag handoff, never URLs into the retained history.
-/// Non-open-in-place item providers let macOS copy these files for the receiver.
+/// Concrete file URLs support browser upload targets as well as document apps.
 public actor PNGDragExportStore {
     public static let shared = PNGDragExportStore(
         root: URL(fileURLWithPath: "/Volumes/Expansion/pastebot-remix-build/DragExports", isDirectory: true),
@@ -35,7 +36,12 @@ public actor PNGDragExportStore {
         guard png.starts(with: [137, 80, 78, 71, 13, 10, 26, 10]) else {
             throw HistoryError.message("Cannot export this image as PNG.")
         }
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        var rootIsDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: root.path, isDirectory: &rootIsDirectory) {
+            guard rootIsDirectory.boolValue else { throw HistoryError.message("The image export location is not a folder.") }
+        } else {
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        }
         try cleanup(now: now)
         let folder = root.appendingPathComponent("drag-" + UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -54,7 +60,13 @@ public actor PNGDragExportStore {
     }
 
     /// End the producer request; keep the snapshot for the full retention period.
-    public func finish(_ file: URL) { active.remove(file.deletingLastPathComponent().standardizedFileURL.path) }
+    public func finish(_ file: URL, now: Date = Date()) {
+        let folder = file.deletingLastPathComponent()
+        active.remove(folder.standardizedFileURL.path)
+        // Give receivers a full grace period after the preview/drag releases its
+        // lease, even if the preview was open for longer than the retention age.
+        try? FileManager.default.setAttributes([.modificationDate: now], ofItemAtPath: folder.path)
+    }
 
     /// Called on exports. Only our marked, inactive, seven-day-old directories
     /// are removed. A completed/cancelled drag never triggers deletion.
@@ -72,32 +84,35 @@ public actor PNGDragExportStore {
     }
 }
 
+
+/// Owns a concrete export for the entire preview/drag lifetime. Browser upload
+/// targets discover a file URL on the dragging pasteboard, as with Finder.
+public final class PNGDragSnapshot: NSObject, NSPasteboardWriting {
+    public let file: URL
+    public let png: Data
+    private let exports: PNGDragExportStore
+    public init(file: URL, png: Data, exports: PNGDragExportStore) {
+        self.file = file; self.png = png; self.exports = exports
+    }
+    deinit {
+        let file = file, exports = exports
+        Task { await exports.finish(file) }
+    }
+    public func writableTypes(for pasteboard: NSPasteboard) -> [NSPasteboard.PasteboardType] {
+        [.fileURL, .png]
+    }
+    public func pasteboardPropertyList(forType type: NSPasteboard.PasteboardType) -> Any? {
+        switch type {
+        case .fileURL: return file.absoluteString
+        case .png: return png
+        default: return nil
+        }
+    }
+}
+
 public enum PNGDragProvider {
-    /// Captures immutable PNG bytes at drag start, independent of later history
-    /// eviction/deletion. It never reads/writes the system clipboard or pastes.
-    public static func make(png: Data, exports: PNGDragExportStore = .shared,
-                            onError: @escaping @Sendable (String) -> Void = { _ in }) -> NSItemProvider {
-        let provider = NSItemProvider()
-        provider.suggestedName = "Clipboard-Remix.png"
-        provider.registerFileRepresentation(forTypeIdentifier: UTType.png.identifier, fileOptions: [], visibility: .all) { completion in
-            Task {
-                do {
-                    let file = try await exports.export(png)
-                    // Without openInPlace, the framework copies this file before
-                    // the completion returns; the receiver owns that copy's life.
-                    completion(file, false, nil)
-                    await exports.finish(file)
-                } catch {
-                    onError("Image drag failed: \(error.localizedDescription)")
-                    completion(nil, false, error)
-                }
-            }
-            return nil
-        }
-        provider.registerDataRepresentation(forTypeIdentifier: UTType.png.identifier, visibility: .all) { completion in
-            completion(png, nil)
-            return nil
-        }
-        return provider
+    public static func prepare(png: Data, exports: PNGDragExportStore = .shared) async throws -> PNGDragSnapshot {
+        let file = try await exports.export(png)
+        return PNGDragSnapshot(file: file, png: png, exports: exports)
     }
 }

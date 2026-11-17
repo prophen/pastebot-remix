@@ -2,10 +2,13 @@
 import AppKit
 import ClipboardCore
 
+let checkTemporaryDirectory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["CLIPBOARD_TEST_ROOT"]!, isDirectory: true)
+
+
 /// Runs against the real palette/hosting view, without monitoring the system
 /// clipboard, sending keystrokes, or touching the user's history/preferences.
 @MainActor func runPaletteChecks() async throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent("palette-check-\(UUID())")
+    let root = checkTemporaryDirectory.appendingPathComponent("palette-check-\(UUID())")
     let suite = "ClipboardRemix.PaletteChecks.\(UUID())"
     let defaults = UserDefaults(suiteName: suite)!
     defer {

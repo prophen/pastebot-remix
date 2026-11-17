@@ -10,6 +10,7 @@ mkdir -p "$BUILD_ROOT/cache" "$BUILD_ROOT/tmp"
 export CLANG_MODULE_CACHE_PATH="$BUILD_ROOT/cache"
 export SWIFTPM_MODULECACHE_OVERRIDE="$BUILD_ROOT/cache"
 export TMPDIR="$BUILD_ROOT/tmp"
+export CLIPBOARD_TEST_ROOT="$BUILD_ROOT/tmp"
 args=(--sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk --scratch-path "$BUILD_ROOT/scratch" --cache-path "$BUILD_ROOT/swiftpm-cache" --config-path "$BUILD_ROOT/config" --security-path "$BUILD_ROOT/security")
 if [[ "${1:-}" == test ]]; then
   swift build "${args[@]}" --product ClipboardChecks

@@ -3,7 +3,7 @@ import AppKit
 import ClipboardCore
 
 @MainActor func runTimingChecks() async throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent("timing-check-\(UUID())")
+    let root = checkTemporaryDirectory.appendingPathComponent("timing-check-\(UUID())")
     let board = NSPasteboard(name: .init("ClipboardRemix.TimingChecks.\(UUID())"))
     defer { board.releaseGlobally(); try? FileManager.default.removeItem(at: root) }
     let store = try HistoryStore(root: root)

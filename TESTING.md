@@ -164,3 +164,15 @@ Implemented issues #4–#7 with three subagents, followed by root integration an
 - Final signed build: `/Volumes/Expansion/pastebot-remix-build/releases/release-whV7978b/Clipboard Remix.app`. Version 0.4.0 build 8 is installed and running at the stable Expansion path.
 - Read-only migration inspection found the new fingerprint column. Real history retained seven entries and one pin across the update. No historical duplicates were deleted.
 - Launch at Login remains enabled (system status 1); the update did not change that setting.
+
+## Version 0.4.1 build 9 — native browser file dragging
+
+- User reported build 8 dragging worked in TextEdit but failed in **Comet + ChatGPT**. Issue #6 remains open for the browser regression.
+- Replaced the SwiftUI PNG-only item provider with a native AppKit dragging session. Its dragging pasteboard advertises a concrete `public.file-url` PNG plus PNG image bytes, matching file-drop targets that require a file rather than an image-only representation.
+- The PNG is prepared asynchronously when its preview loads. An owned snapshot keeps it valid through preview/drag lifetime; cancellation sends no paste and removes no history. The source operation is copy-only. A full seven-day cleanup grace starts when the snapshot is released.
+- Regression checks use an isolated named pasteboard: writing the native drag snapshot yields a readable PNG file URL via `readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])` and matching PNG bytes. The file survives deletion of its disposable history source and cleanup attempts while active.
+- All 13 core groups and native palette/model checks pass. Actual Comet + ChatGPT acceptance on build 9 is pending; automated pasteboard tests alone do not establish browser UI compatibility.
+- A repeated-export regression test also caught an existing-directory creation error; exporting now reuses the owned export folder correctly.
+- Long-lived-preview tests verify active snapshots survive cleanup and receive a fresh grace period on release.
+- Test fixtures now use an explicit CLIPBOARD_TEST_ROOT supplied by build.sh: Foundation's temporaryDirectory was observed ignoring TMPDIR on this macOS version. The final verification run placed fixtures on Expansion.
+- Final release build, Developer ID signing, and strict signature verification passed. Signed source: `/Volumes/Expansion/pastebot-remix-build/releases/release-jA0t46C1/Clipboard Remix.app`; build 9 is installed/running at the stable path, with Launch at Login still enabled.

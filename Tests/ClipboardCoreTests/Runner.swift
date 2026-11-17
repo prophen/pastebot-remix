@@ -1,5 +1,9 @@
 import Foundation
 
+// Foundation may ignore TMPDIR on macOS; require the build script's explicit root.
+let checkTemporaryDirectory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["CLIPBOARD_TEST_ROOT"]!, isDirectory: true)
+
+
 // A standalone check executable keeps verification available with Command Line Tools,
 // which ship neither XCTest.framework nor the full Xcode test runner.
 func expectEqual<T: Equatable>(_ lhs: T, _ rhs: T, file: StaticString = #file, line: UInt = #line) { precondition(lhs == rhs, "Expected \(rhs), got \(lhs)", file: file, line: line) }

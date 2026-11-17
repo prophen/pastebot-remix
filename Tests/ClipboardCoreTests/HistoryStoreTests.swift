@@ -6,7 +6,7 @@ final class HistoryStoreTests {
     var teardown: [() -> Void] = []
     func addTeardownBlock(_ block: @escaping () -> Void) { teardown.append(block) }
     func temporaryRoot() throws -> URL {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let root = checkTemporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: root) }
         return root
