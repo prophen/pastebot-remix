@@ -14,6 +14,7 @@ import ClipboardCore
     let store: HistoryStore
     let monitor: ClipboardMonitor
     var dismiss: (() -> Void)?
+    var pasteItem: ((HistoryItem) -> Void)?
     var visible: [HistoryItem] { HistoryItem.matching(items, query: query, filter: filter) }
     var selected: HistoryItem? { visible.first { $0.id == selectedID } }
     private var pending = 0
@@ -50,13 +51,22 @@ import ClipboardCore
         Task {
             defer { isCopying = false }
             do {
-                let ok: Bool
-                if let text = item.text { ok = monitor.restore(text: text) }
-                else { let data = try await store.clipboardImage(for: item); ok = monitor.restore(image: data.png, tiff: data.tiff) }
-                guard ok else { throw HistoryError.message("Couldn't write to the clipboard. Try again.") }
+                try await restore(item)
                 dismiss?()
             } catch { status = "Copy failed: \(error.localizedDescription)" }
         }
+    }
+    func restore(_ item: HistoryItem, isCurrent: () -> Bool = { true }) async throws {
+        let ok: Bool
+        if let text = item.text {
+            guard isCurrent() else { throw PasteDelivery.Failure.cancelled }
+            ok = monitor.restore(text: text)
+        } else {
+            let data = try await store.clipboardImage(for: item)
+            guard isCurrent() else { throw PasteDelivery.Failure.cancelled }
+            ok = monitor.restore(image: data.png, tiff: data.tiff)
+        }
+        guard ok else { throw HistoryError.message("Couldn't write to the clipboard. Try again.") }
     }
     func deleteSelected() {
         guard let id = selectedID else { return }

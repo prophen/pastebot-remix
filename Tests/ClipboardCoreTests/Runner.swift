@@ -29,6 +29,11 @@ enum CheckError: Error { case nilValue }
         print("PASS text and PNG/TIFF pasteboard round trips")
         monitor.testPauseAndSensitiveMarkers()
         print("PASS pause and sensitive markers")
-        print("All 7 check groups passed.")
+        let paste = PasteDeliveryTests()
+        try await paste.testWaitsForStableFocus()
+        try await paste.testNeverSendsAfterCancellationOrClipboardChange()
+        try await paste.testUnstableOrMissingFocusTimesOut()
+        print("PASS paste delivery focus, cancellation, clipboard changes, and timeout")
+        print("All 8 check groups passed.")
     }
 }

@@ -48,7 +48,7 @@ struct PaletteView: View {
                 Text(model.paused ? "Capture paused" : "\(model.items.count) saved")
                     .foregroundStyle(model.paused ? .orange : .secondary)
                 Spacer()
-                Text("↑↓ move   ⌘1–9 copy   esc close").foregroundStyle(.secondary)
+                Text("Click to paste   ↑↓ preview   ⌘1–9 copy   esc close").foregroundStyle(.secondary)
                 Button(model.isCopying ? "Copying…" : "Copy ↩") { model.copy() }
                     .buttonStyle(.borderedProminent).disabled(model.selected == nil || model.isCopying)
             }.font(.caption).padding(12)
@@ -74,7 +74,7 @@ struct PaletteView: View {
                         if index == 0 || !Calendar.current.isDate(item.created, inSameDayAs: rows[index - 1].created) {
                             Text(dayLabel(item.created)).font(.caption.weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 8).padding(.top, 10)
                         }
-                        Button { model.selectedID = item.id } label: {
+                        Button { model.selectedID = item.id; model.pasteItem?(item) } label: {
                             HStack(spacing: 9) {
                                 if item.kind == .image {
                                     ClipImage(item: item, store: model.store, thumbnail: true).frame(width: 42, height: 34)
@@ -92,6 +92,12 @@ struct PaletteView: View {
                                 .overlay(RoundedRectangle(cornerRadius: 7).stroke(model.selectedID == item.id ? Color.accentColor : .clear, lineWidth: 1))
                                 .contentShape(Rectangle())
                         }.buttonStyle(.plain).id(item.id)
+                        .disabled(model.isCopying)
+                        .help("Click to paste into the previous app. Use arrow keys to preview.")
+                        .contextMenu {
+                            Button("Preview") { model.selectedID = item.id }
+                            Button("Copy Only") { model.copy(item) }
+                        }
                     }
                 }.padding(8)
             }.onChange(of: model.selectedID) { _, id in if let id { proxy.scrollTo(id) } }

@@ -1,3 +1,5 @@
+> Scope update: click-to-paste was requested after the initial MVP. Clicking a row now pastes into the previous app with Accessibility permission; keyboard copy actions remain copy-only. The original plan below records the initial scope.
+
 # Clipboard history MVP
 
 ## Outcome

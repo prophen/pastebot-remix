@@ -32,7 +32,7 @@ Pass the printed release directory into the next commands:
 ./scripts/release.sh finish '/Volumes/Expansion/pastebot-remix-build/releases/release-XXXXXXXX'
 ```
 
-Submission returns without waiting. If `finish` reports `In Progress`, Apple is still processing; run it again later. A rejection produces a log for investigation and no distribution ZIP. Once accepted, the script staples and validates the ticket, checks Gatekeeper acceptance, and creates `Clipboard-Remix-0.1.0-arm64.zip` plus its SHA-256 checksum. It never publishes a GitHub Release automatically.
+Submission returns without waiting. If `finish` reports `In Progress`, Apple is still processing; run it again later. A rejection produces a log for investigation and no distribution ZIP. Once accepted, the script staples and validates the ticket, checks Gatekeeper acceptance, and creates `Clipboard-Remix-<version>-arm64.zip` plus its SHA-256 checksum. It never publishes a GitHub Release automatically.
 
 Use `NOTARY_PROFILE` to choose a different Keychain profile, `NOTARY_KEYCHAIN` to select its Keychain (default: login), and `CLIPBOARD_BUILD_ROOT` for a different build volume. Signing credentials and private keys never belong in the release directory or repository.
 

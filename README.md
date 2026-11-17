@@ -18,7 +18,9 @@ The default build is ad-hoc signed for local development. For Developer ID signi
 - Capture starts when the app launches. It does not import whatever was on the clipboard before launch.
 - Click the clipboard menu-bar icon or press **Option-Command-V** to open the palette.
 - Type to search text; choose **All / Text / Images**. Images have time and dimension labels, with no OCR or filename search.
-- Use **Up/Down** to select, **Return** to copy and dismiss, or **Command-1…9** to copy one of the first nine filtered results. Then paste normally with **Command-V** in your destination app.
+- **Click a history row** to paste it into the field that was focused before opening the palette. On first use, enable Clipboard Remix in **System Settings → Privacy & Security → Accessibility**, then focus your destination and reopen the palette. No paste is queued while permission is missing.
+- Use **Up/Down** to preview without pasting, or right-click a row and choose **Preview**.
+- For copy-only behavior, use **Return** to copy and dismiss, or **Command-1…9** to copy one of the first nine filtered results. Then paste normally with **Command-V** in your destination app.
 - **Escape** closes the palette without replacing the clipboard.
 - **Command-Delete** deletes the selected history item. The gear menu offers pause/resume, clear with confirmation, and quit.
 - Right-click the menu-bar icon for controls and an alternate **Shift-Option-Command-V** shortcut. Failed shortcut registration is reported; the working shortcut is retained when switching fails.
@@ -30,7 +32,7 @@ History is stored in `~/Library/Application Support/ClipboardRemix/`: `history.s
 
 The MVP keeps up to **500 entries** and **500 MB of image files including thumbnails**, evicting oldest entries first. Text is limited to 2 MB per entry. Images over the storage limit or 80 megapixels are skipped with a visible status message. Limits are currently fixed. Clearing saved history does not clear the current system clipboard.
 
-Recognized concealed, transient, and generated clipboard markers are skipped, as are file URL copies. This is not universal secret detection. PNG and TIFF clipboard images are supported; images are normalized to PNG. Rich text becomes plain text. Files, OCR, editing, sync, collections, and automatic paste are outside this MVP.
+Recognized concealed, transient, and generated clipboard markers are skipped, as are file URL copies. This is not universal secret detection. PNG and TIFF clipboard images are supported; images are normalized to PNG. Rich text becomes plain text. Files, OCR, editing, sync, and collections are outside this MVP.
 
 Polling occurs every 0.4 seconds; multiple rapid copies between polls can be missed. Copies while paused or while the app is quit are not recorded. Re-copying the same content is a new entry; restoring an item through this app is not.
 
@@ -43,3 +45,5 @@ Polling occurs every 0.4 seconds; multiple rapid copies between polls can be mis
 The standalone test executable runs without XCTest or Xcode. Tests use temporary storage on the build volume and isolated named pasteboards. They cover mixed persistence, Unicode/multiline text, search/filter combinations, image dimensions/transparency, copy-back representations, self-write suppression, pause/markers, retention, missing-file recovery, and orphan cleanup.
 
 See [TESTING.md](TESTING.md) for observed results and remaining manual checks.
+
+Click-to-paste sends the normal Command-V action to the previous app after restoring its focused field. It supports text and images wherever that destination accepts normal pasting. If focus cannot be verified, use Copy and paste manually. The app does not press Return or submit the destination form.
