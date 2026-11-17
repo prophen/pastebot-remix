@@ -113,3 +113,18 @@ The test document created in TextEdit and the two demonstration history entries 
 - Read-only inspection confirmed the real database gained the pin column and still had six entries (zero pinned); no real clips were used as test fixtures.
 - Re-running the installer against the occupied stable destination correctly refused to overwrite it.
 - Final signed source build: `/Volumes/Expansion/pastebot-remix-build/releases/release-9EBpH4Qe/Clipboard Remix.app`; the same app is installed and running at the stable path. Strict signature validation passed. Notarization was not submitted.
+
+## Version 0.3.1 build 7 — palette reopen size regression
+
+- User manual acceptance: favorites (#3) and the Launch at Login control (#2) work. Those issues are closed. No actual logout/login test is claimed.
+- User reported that palette size did **not** survive closing/reopening in build 6. The original geometry-only tests missed a native layout integration bug.
+- Reproduced in the actual PaletteController/PaletteView: after layout, the root NSHostingView replaced the intended 740 × 490 window minimum with 351 × 188. Users could therefore shrink below the minimum enforced on reopening.
+- A root hosting view with sizingOptions disabled still reset the window minimum to zero in a second failing check. The fix uses a plain AppKit container around the flexible SwiftUI hosting view, so AppKit retains control of window bounds.
+- New native integration checks use temporary history and an isolated preferences suite. No clipboard monitor is started and no paste is sent. They exercise initial layout, asynchronous history loading, minimum-size ownership, move/resize, hide/reopen, close-button reopening at the minimum, and a new controller restoring saved preferences.
+- All 10 existing core groups plus the native integration check pass via `./scripts/build.sh test`. The new check failed before the fix and passes afterward.
+- The integration test is compiled only with PALETTE_CHECKS; release builds do not expose the test runner. Test windows may briefly appear during `build.sh test`.
+- Physical display disconnection, actual logout/login, and a full user field-level paste regression pass remain manual limitations. This fix does not change paste delivery or gesture handlers.
+- Framework reference: [Apple NSHostingView sizingOptions](https://developer.apple.com/documentation/swiftui/nshostingview/sizingoptions).
+- Release build and Developer ID signing/strict signature validation passed. Build 7 is installed and running from the stable Expansion path; the known build 6 source remains in its release directory for rollback.
+- The system still reports Launch at Login enabled after updating the known installed bundle in place; the update did not change registration or real history.
+- Build 7 manual close/reopen confirmation is pending; #1 stays open until that reported regression is confirmed resolved.

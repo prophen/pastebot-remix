@@ -15,6 +15,8 @@ if [[ "${1:-}" == test ]]; then
   swift build "${args[@]}" --product ClipboardChecks
   BIN_DIR="$(swift build "${args[@]}" --show-bin-path)"
   "$BIN_DIR/ClipboardChecks"
+  swift build "${args[@]}" --product ClipboardRemix -Xswiftc -DPALETTE_CHECKS
+  "$BIN_DIR/ClipboardRemix" --check-palette
   exit
 fi
 swift build "${args[@]}" -c release --product ClipboardRemix

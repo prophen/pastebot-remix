@@ -65,7 +65,7 @@ Before replacing or moving the installed app, disable Launch at Login and quit i
 ./scripts/build.sh test
 ```
 
-The standalone test executable runs without XCTest or Xcode. Tests use temporary storage on the build volume and isolated named pasteboards. They cover mixed persistence, Unicode/multiline text, search/filter combinations, image dimensions/transparency, copy-back representations, self-write suppression, pause/markers, retention, missing-file recovery, orphan cleanup, favorite migration/order/capacity protection, and display geometry recovery.
+The checks run without XCTest or Xcode. In addition to the core executable, a test-only build exercises the real palette with isolated preferences and temporary history; test windows briefly appear. Tests use temporary storage on the build volume and isolated named pasteboards. They cover mixed persistence, Unicode/multiline text, search/filter combinations, image dimensions/transparency, copy-back representations, self-write suppression, pause/markers, retention, missing-file recovery, orphan cleanup, favorite migration/order/capacity protection, and display geometry recovery.
 
 See [TESTING.md](TESTING.md) for observed results and remaining manual checks.
 

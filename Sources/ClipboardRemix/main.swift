@@ -66,6 +66,18 @@ import ServiceManagement
 }
 
 MainActor.assumeIsolated {
+#if PALETTE_CHECKS
+    if CommandLine.arguments.contains("--check-palette") {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+        Task {
+            do { try await runPaletteChecks(); print("PASS native palette layout, reopen and persistence"); exit(0) }
+            catch { print("FAIL native palette checks: \(error)"); exit(1) }
+        }
+        app.run()
+        exit(1)
+    }
+#endif
     if CommandLine.arguments.contains("--login-status") {
         print("Launch at Login system status: \(SMAppService.mainApp.status.rawValue) (0=off, 1=enabled, 2=requires approval, 3=not found)")
         exit(0)

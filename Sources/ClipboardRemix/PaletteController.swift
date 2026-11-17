@@ -11,6 +11,7 @@ final class PalettePanel: NSPanel {
 @MainActor final class PaletteController: NSObject, NSWindowDelegate {
     let panel: PalettePanel
     private let model: AppModel
+    private let defaults: UserDefaults
     private var previousApp: NSRunningApplication?
     private var interactionID = UUID()
     private var keyMonitor: Any?
@@ -20,7 +21,8 @@ final class PalettePanel: NSPanel {
     private var applyingGeometry = false
     private var geometryInitialized = false
     private var activationObserver: NSObjectProtocol?
-    init(model: AppModel) {
+    init(model: AppModel, defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         self.model = model
         panel = PalettePanel(contentRect: NSRect(x: 0, y: 0, width: 800, height: 530), styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel], backing: .buffered, defer: false)
         super.init()
@@ -33,7 +35,17 @@ final class PalettePanel: NSPanel {
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         panel.minSize = NSSize(width: 740, height: 490)
-        panel.contentView = NSHostingView(rootView: PaletteView(model: model))
+        let hostingView = NSHostingView(rootView: PaletteView(model: model))
+        // AppKit owns the window bounds. SwiftUI's default sizing options replace
+        // minSize after layout, allowing sizes that restoreGeometry would expand.
+        hostingView.sizingOptions = []
+        // A root NSHostingView also writes contentMinSize/contentMaxSize to its
+        // window, even with sizing disabled. A plain container isolates that.
+        let container = NSView(frame: panel.contentLayoutRect)
+        hostingView.frame = container.bounds
+        hostingView.autoresizingMask = [.width, .height]
+        container.addSubview(hostingView)
+        panel.contentView = container
         restoreGeometry()
         panel.delegate = self
         screenObserver = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
@@ -185,7 +197,7 @@ final class PalettePanel: NSPanel {
     private func restoreGeometry() {
         let saved: CGRect?
         if geometryInitialized { saved = panel.frame }
-        else if let values = UserDefaults.standard.array(forKey: "paletteFrame") as? [Double], values.count == 4 {
+        else if let values = defaults.array(forKey: "paletteFrame") as? [Double], values.count == 4 {
             saved = CGRect(x: values[0], y: values[1], width: values[2], height: values[3])
         } else { saved = nil }
         guard let frame = PaletteGeometry.restore(saved, screens: NSScreen.screens.map(\.visibleFrame)) else { return }
@@ -200,7 +212,7 @@ final class PalettePanel: NSPanel {
     private func saveGeometry() {
         guard geometryInitialized, !applyingGeometry else { return }
         let frame = panel.frame
-        UserDefaults.standard.set([frame.origin.x, frame.origin.y, frame.width, frame.height], forKey: "paletteFrame")
+        defaults.set([frame.origin.x, frame.origin.y, frame.width, frame.height], forKey: "paletteFrame")
     }
     func windowDidMove(_ notification: Notification) { saveGeometry() }
     func windowDidResize(_ notification: Notification) { saveGeometry() }
