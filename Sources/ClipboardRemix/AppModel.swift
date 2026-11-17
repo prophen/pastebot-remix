@@ -7,8 +7,12 @@ import ClipboardCore
     @Published var query = "" { didSet { reconcileSelection() } }
     @Published var filter: ClipFilter = .all { didSet { reconcileSelection() } }
     @Published var selectedID: String?
-    @Published var paused = false { didSet { monitor.paused = paused } }
-    @Published var status: String?
+    @Published private(set) var paused = false
+    @Published private(set) var resumeAt: Date?
+    @Published private(set) var feedback: String?
+    @Published var status: String? {
+        didSet { if status != nil { clearFeedback() } }
+    }
     @Published var isCopying = false
     @Published var openGeneration = 0
     @Published var pasteDestinationName: String?
@@ -20,8 +24,76 @@ import ClipboardCore
     var visible: [HistoryItem] { HistoryItem.matching(items, query: query, filter: filter) }
     var selected: HistoryItem? { visible.first { $0.id == selectedID } }
     private var pending = 0
-    init(store: HistoryStore) {
-        self.store = store; monitor = ClipboardMonitor()
+    private var pauseState = CapturePause()
+    private var pauseTimer: Timer?
+    private var wakeObserver: NSObjectProtocol?
+    private var feedbackState = BriefFeedback()
+    private var feedbackTask: Task<Void, Never>?
+    var pauseDescription: String {
+        if let resumeAt { return "Paused until \(resumeAt.formatted(date: .omitted, time: .shortened))" }
+        return paused ? "Capture paused" : "Capture running"
+    }
+    init(store: HistoryStore, monitor: ClipboardMonitor? = nil) {
+        self.store = store; self.monitor = monitor ?? ClipboardMonitor()
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshPause() }
+        }
+    }
+    deinit {
+        pauseTimer?.invalidate()
+        feedbackTask?.cancel()
+        if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
+    }
+    func pauseIndefinitely() {
+        pauseState.pause()
+        applyPauseState()
+    }
+    func pauseFor15Minutes() {
+        pauseState.pause(until: Date().addingTimeInterval(15 * 60))
+        applyPauseState()
+    }
+    func resumeCapture() {
+        pauseState.resume()
+        applyPauseState()
+    }
+    func togglePause() { if paused { resumeCapture() } else { pauseIndefinitely() } }
+    func refreshPause(at now: Date = Date()) {
+        if pauseState.expire(at: now) { applyPauseState() }
+    }
+    private func applyPauseState() {
+        pauseTimer?.invalidate()
+        pauseTimer = nil
+        // Setting monitor.paused suppresses the current change count, including
+        // the clipboard copied during sleep or immediately before manual Resume.
+        monitor.paused = pauseState.isPaused
+        paused = pauseState.isPaused
+        resumeAt = pauseState.resumeAt
+        if resumeAt != nil {
+            let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refreshPause() }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            pauseTimer = timer
+        }
+    }
+    func showFeedback(_ message: String) {
+        feedbackTask?.cancel()
+        let id = feedbackState.show(message, at: Date())
+        let deadline = feedbackState.expiresAt!
+        feedback = feedbackState.message
+        feedbackTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(2)) } catch { return }
+            guard let self else { return }
+            if self.feedbackState.expire(id, at: deadline) { self.feedback = nil }
+        }
+    }
+    func clearFeedback() {
+        feedbackTask?.cancel()
+        feedbackTask = nil
+        feedbackState.clear()
+        feedback = nil
     }
     func start() async {
         do { try await store.recover(); try await reload() } catch { status = error.localizedDescription }
@@ -54,7 +126,7 @@ import ClipboardCore
             defer { isCopying = false }
             do {
                 try await restore(item)
-                status = "Copied to clipboard."
+                showFeedback("Copied")
                 if dismissAfterCopy { dismiss?() }
             } catch { status = "Copy failed: \(error.localizedDescription)" }
         }

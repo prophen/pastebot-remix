@@ -65,5 +65,12 @@ import ClipboardCore
     defer { restarted.hide() }
     try await Task.sleep(for: .milliseconds(200))
     try check(restarted.panel.frame, minimumFrame, "new controller / saved preferences")
+    newModel.pauseFor15Minutes()
+    newModel.showFeedback("Copied")
+    newModel.status = "Test error remains visible"
+    try await Task.sleep(for: .milliseconds(200))
+    try check(restarted.panel.frame, minimumFrame, "pause, feedback and error layout")
+    newModel.resumeCapture()
+    try await runTimingChecks()
 }
 #endif

@@ -152,7 +152,6 @@ final class PalettePanel: NSPanel {
         }
         down.flags = .maskCommand; up.flags = .maskCommand
         let request = interactionID
-        model.status = nil
         model.isCopying = true
         Task {
             defer { model.isCopying = false }
@@ -177,6 +176,7 @@ final class PalettePanel: NSPanel {
                     },
                     send: { down.postToPid(target.processIdentifier); up.postToPid(target.processIdentifier) }
                 )
+                model.showFeedback("Paste sent to \(target.localizedName ?? "destination")")
             } catch PasteDelivery.Failure.cancelled {
                 // Escape or a new palette session cancels an in-flight image/paste.
             } catch {

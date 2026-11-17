@@ -38,6 +38,14 @@ enum CheckError: Error { case nilValue }
         print("PASS favorites migration, ordering/filtering, reopen, capacity and file retention")
         testPaletteGeometry()
         print("PASS palette geometry restoration and disconnected display recovery")
-        print("All 10 check groups passed.")
+        testTimedPauseAndFeedbackState()
+        print("PASS timed pause expiry/cancellation and feedback replacement")
+        try await DeduplicationTests().run()
+        print("PASS exact text/image deduplication, pins, collisions and cleanup")
+        let drag = PNGDragTests()
+        try await drag.testProviderSnapshotAndRepresentations()
+        try await drag.testExportRetentionAndMissingVolume()
+        print("PASS PNG drag representations, snapshot lifetime and export cleanup")
+        print("All 13 core check groups passed.")
     }
 }

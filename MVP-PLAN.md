@@ -1,3 +1,5 @@
+> Second follow-up: issues #4–#7 add timed pause, brief success feedback, PNG dragging from the image preview, and exact deduplication. Their implementation and verification are tracked in TESTING.md.
+
 > November 16 follow-up: issues #1–#3 add remembered palette geometry, opt-in login launch, and pinned text/image favorites. These supersede the original deferrals below. Issues #4–#7 remain backlog.
 
 > Scope update: click-to-paste was requested after the initial MVP. Clicking a row now pastes into the previous app with Accessibility permission; keyboard copy actions remain copy-only. The original plan below records the initial scope.

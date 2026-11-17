@@ -29,7 +29,9 @@ struct PaletteView: View {
             }
             HStack(spacing: 12) {
                 Menu {
-                    Button(model.paused ? "Resume Capture" : "Pause Capture") { model.paused.toggle() }
+                    if model.paused { Button("Resume Capture", action: model.resumeCapture) }
+                    Button("Pause for 15 Minutes", action: model.pauseFor15Minutes)
+                    Button("Pause Indefinitely", action: model.pauseIndefinitely)
                     LoginMenu(controller: model.login)
                     Divider()
                     Button("Delete Selected", action: model.deleteSelected).disabled(model.selected == nil)
@@ -47,7 +49,7 @@ struct PaletteView: View {
                 .menuStyle(.borderlessButton)
                 .frame(width: 40, height: 24)
                 .accessibilityLabel("Clipboard controls")
-                Text(model.paused ? "Capture paused" : "\(model.items.count) saved")
+                Text(model.paused ? model.pauseDescription : "\(model.items.count) saved")
                     .foregroundStyle(model.paused ? .orange : .secondary)
                 Spacer()
                 Text(model.pasteDestinationName.map { "Paste → \($0)   ↑↓ preview   esc close" } ?? "Focus a destination first   ↑↓ preview").foregroundStyle(.secondary)
@@ -57,6 +59,18 @@ struct PaletteView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.regularMaterial)
+        .overlay(alignment: .topTrailing) {
+            if let feedback = model.feedback {
+                Text(feedback)
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(.regularMaterial, in: Capsule())
+                    .overlay(Capsule().stroke(.secondary.opacity(0.3)))
+                    .padding(.top, 62).padding(.trailing, 16)
+                    .allowsHitTesting(false)
+                    .accessibilityLabel(feedback)
+            }
+        }
         .onAppear { searchFocused = true }
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)) { _ in model.login.refresh() }
         .onChange(of: model.openGeneration) { _, _ in searchFocused = true }
@@ -133,6 +147,9 @@ struct PaletteView: View {
                     ClipImage(item: item, store: model.store, thumbnail: false)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .padding(12).background(Color.gray.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                        .modifier(ImagePreviewDrag(item: item, store: model.store, onError: { model.status = $0 }))
+                    Text("Drag the preview into a document or upload target")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 HStack {
                     Text(item.kind == .image ? "\(item.width) × \(item.height)" : "Plain text")

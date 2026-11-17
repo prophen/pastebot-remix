@@ -1,6 +1,7 @@
 import AppKit
 import ClipboardCore
 import ServiceManagement
+import Combine
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
@@ -9,6 +10,7 @@ import ServiceManagement
     private var shortcut: GlobalShortcut!
     private var shiftShortcut = UserDefaults.standard.bool(forKey: "shiftShortcut")
     private var shortcutRegistered = false
+    private var subscriptions = Set<AnyCancellable>()
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         do {
@@ -24,6 +26,10 @@ import ServiceManagement
         statusItem.button?.toolTip = "Clipboard Remix — click to open; right-click for controls"
         statusItem.button?.target = self; statusItem.button?.action = #selector(statusClicked)
         statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        model.$paused.combineLatest(model.$resumeAt, model.$feedback)
+            .sink { [weak self] paused, resumeAt, feedback in
+                self?.updateStatusItem(paused: paused, resumeAt: resumeAt, feedback: feedback)
+            }.store(in: &subscriptions)
         shortcut = GlobalShortcut(); shortcut.onPress = { [weak self] in self?.palette.toggle() }
         shortcutRegistered = shortcut.register(shift: shiftShortcut)
         if !shortcutRegistered { model.status = "Global shortcut is unavailable. Open from the menu bar; right-click it to choose the alternate shortcut." }
@@ -42,7 +48,14 @@ import ServiceManagement
             let menu = NSMenu(); menu.delegate = self
             func add(_ title: String, _ action: Selector) { let item = menu.addItem(withTitle: title, action: action, keyEquivalent: ""); item.target = self }
             add("Open Clipboard Remix", #selector(openPalette))
-            add(model.paused ? "Resume Capture" : "Pause Capture", #selector(togglePause))
+            if model.paused {
+                let state = menu.addItem(withTitle: model.pauseDescription, action: nil, keyEquivalent: "")
+                state.isEnabled = false
+                state.tag = 101
+                add("Resume Capture", #selector(resumeCapture))
+            }
+            add("Pause for 15 Minutes", #selector(pauseFor15Minutes))
+            add("Pause Indefinitely", #selector(pauseIndefinitely))
             menu.addItem(.separator())
             add("Shortcut: \(shiftShortcut ? "⇧⌥⌘V" : "⌥⌘V")\(shortcutRegistered ? "" : " (unavailable)") — Switch", #selector(switchShortcut))
             add("Clear History…", #selector(clearHistory))
@@ -53,7 +66,21 @@ import ServiceManagement
     }
     func menuDidClose(_ menu: NSMenu) { statusItem.menu = nil }
     @objc private func openPalette() { palette.show() }
-    @objc private func togglePause() { model.paused.toggle(); statusItem.button?.image = NSImage(systemSymbolName: model.paused ? "pause.circle" : "clipboard", accessibilityDescription: "Clipboard Remix") }
+    private func updateStatusItem(paused: Bool, resumeAt: Date?, feedback: String?) {
+        statusItem.button?.image = NSImage(systemSymbolName: paused ? "pause.circle" : "clipboard", accessibilityDescription: "Clipboard Remix")
+        // Keep confirmation visible after keyboard copy dismisses the palette.
+        statusItem.length = feedback == nil ? NSStatusItem.squareLength : NSStatusItem.variableLength
+        statusItem.button?.imagePosition = .imageLeading
+        statusItem.button?.title = feedback.map { $0 == "Copied" ? " Copied" : " Paste sent" } ?? ""
+        let capture = paused ? resumeAt.map { "Capture paused until \($0.formatted(date: .omitted, time: .shortened))" } ?? "Capture paused indefinitely" : "Capturing"
+        if let state = statusItem.menu?.item(withTag: 101) {
+            state.title = capture
+        }
+        statusItem.button?.toolTip = feedback ?? "Clipboard Remix — \(capture). Click to open; right-click for controls."
+    }
+    @objc private func resumeCapture() { model.resumeCapture() }
+    @objc private func pauseFor15Minutes() { model.pauseFor15Minutes() }
+    @objc private func pauseIndefinitely() { model.pauseIndefinitely() }
     @objc private func clearHistory() { palette.show(); model.clear() }
     @objc private func switchShortcut() {
         if shortcut.register(shift: !shiftShortcut) {
@@ -71,7 +98,7 @@ MainActor.assumeIsolated {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
         Task {
-            do { try await runPaletteChecks(); print("PASS native palette layout, reopen and persistence"); exit(0) }
+            do { try await runPaletteChecks(); print("PASS native palette layout/persistence, timed pause and copy feedback"); exit(0) }
             catch { print("FAIL native palette checks: \(error)"); exit(1) }
         }
         app.run()

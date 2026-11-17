@@ -128,3 +128,39 @@ The test document created in TextEdit and the two demonstration history entries 
 - Release build and Developer ID signing/strict signature validation passed. Build 7 is installed and running from the stable Expansion path; the known build 6 source remains in its release directory for rollback.
 - The system still reports Launch at Login enabled after updating the known installed bundle in place; the update did not change registration or real history.
 - User confirmed on build 7 that resizing, closing, and reopening with Option-Command-V preserves the size. The reported close/reopen regression is resolved; #1 is accepted for closure.
+
+## Version 0.4.0 build 8 — second feature batch
+
+Implemented issues #4–#7 with three subagents, followed by root integration and verification.
+
+### Automated checks passed
+
+- All **13 core check groups** pass via `./scripts/build.sh test`, followed by the native palette/model checks. Existing clipboard, paste-delivery, favorites, and window-size checks remain green.
+- Timed pause: 15-minute deadline, exact expiry, simulated wake beyond expiry, manual Resume cancellation, replacement with indefinite pause, session-only relaunch policy. Model tests use a named pasteboard and verify that the clipboard copied during a pause is suppressed on resume while subsequent copies are captured.
+- Feedback: successful text/image restoration, confirmation before keyboard dismissal, failed-image restoration without success feedback, replacement races, automatic expiry, and persistent error preservation. Paste success is reported only after the existing guarded event-delivery call returns; wording is “Paste sent,” not a claim of destination insertion.
+- Deduplication: exact UTF-8 including whitespace/NUL/Unicode distinctions; timestamp/order refresh; preserved IDs and pins; full pinned capacity; reopening; PNG/TIFF equivalence; semitransparent image equivalence and normalized PNG recopy; distinct pixels/dimensions; deliberately forced candidate-hash collisions; lazy fingerprint backfill; missing-file recovery; no orphan files.
+- Dragging: NSItemProvider PNG data and file representations deliver matching bytes after the disposable source history item is deleted. Starting/cancelling an unrequested provider creates no files and does not mutate history. Retention checks protect active requests, retain finished snapshots during the grace period, remove only marked expired folders, preserve unrelated files, and reject missing/mismatched volumes.
+- The first drag-retention test caught an active-folder URL comparison mismatch. Active requests now use standardized path keys; the regression passes.
+- Native palette checks also exercise pause/feedback/error layout without changing the restored frame. Tests use temporary storage on Expansion and isolated preferences/pasteboards; no real chat paste or real-history deletion is automated.
+
+### Defined behavior
+
+- Pause for 15 Minutes shows a deadline and resumes by wall time, with a wake notification and a common-runloop timer. Resume cancels it; indefinite pause replaces it. Every relaunch starts capture unpaused.
+- Success feedback lasts two seconds in the palette and menu bar. Menu-bar text covers keyboard copy-and-dismiss without opening a window or stealing focus. A new error cancels old success feedback; success expiry never clears errors.
+- New copies reuse an exact matching record, preserving favorites and files. Pinned items remain first; refreshed unpinned items head the unpinned section. Old duplicate rows are retained rather than deleted during migration.
+- Image equality is dimensions plus native-orientation 8-bit sRGB premultiplied RGBA pixels, with SHA-256 candidate selection followed by full pixel equality. Text is never trimmed or Unicode-normalized for deduplication.
+- Drag only from the large image preview. Providers own immutable PNG snapshots, never history-file URLs. Requested file snapshots live on Expansion in DragExports, with private permissions. macOS copies file representations for the receiver. Marked inactive producer snapshots expire after seven days and are cleaned on the next export; they can outlive clearing history.
+
+### Remaining manual checks
+
+- Exercise the timed-pause and Resume controls in both menus; verify the displayed deadline and a real sleep/wake boundary. Automated tests advance the clock rather than waiting 15 minutes.
+- Observe brief text/image copy and paste feedback, including keyboard dismissal and rapid clicks, in actual destination fields. Recheck exclusive double-click copy and follow-focus; no automated paste into T3 Code was attempted.
+- **Issue #6: drag a preview into a document app and a browser upload target**, and cancel a drag to verify history remains. Provider-level tests cannot establish each receiving app’s UI compatibility. This receiver acceptance check remains outstanding.
+- No public release or notarization submission is part of this pass.
+
+### Signed installation
+
+- Release build and Developer ID signing with hardened runtime/timestamp passed; strict installed signature verification passed.
+- Final signed build: `/Volumes/Expansion/pastebot-remix-build/releases/release-whV7978b/Clipboard Remix.app`. Version 0.4.0 build 8 is installed and running at the stable Expansion path.
+- Read-only migration inspection found the new fingerprint column. Real history retained seven entries and one pin across the update. No historical duplicates were deleted.
+- Launch at Login remains enabled (system status 1); the update did not change that setting.

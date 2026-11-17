@@ -24,14 +24,14 @@ public actor HistoryStore {
         guard sqlite3_exec(connection, schema, nil, nil, nil) == SQLITE_OK else {
             sqlite3_close(connection); db = nil; throw HistoryError.message("Cannot initialize history database.")
         }
-        // Probe the column rather than assuming a schema version from older builds.
-        var probe: OpaquePointer?
-        let hasPins = sqlite3_prepare_v2(connection, "SELECT pinned FROM clips LIMIT 0", -1, &probe, nil) == SQLITE_OK
-        sqlite3_finalize(probe)
-        if !hasPins {
-            guard sqlite3_exec(connection, "ALTER TABLE clips ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0", nil, nil, nil) == SQLITE_OK else {
+        // Additive migrations preserve existing captures and pins.
+        for (column, definition) in [("pinned", "INTEGER NOT NULL DEFAULT 0"), ("fingerprint", "TEXT")] {
+            var probe: OpaquePointer?
+            let exists = sqlite3_prepare_v2(connection, "SELECT \(column) FROM clips LIMIT 0", -1, &probe, nil) == SQLITE_OK
+            sqlite3_finalize(probe)
+            if !exists, sqlite3_exec(connection, "ALTER TABLE clips ADD COLUMN \(column) \(definition)", nil, nil, nil) != SQLITE_OK {
                 sqlite3_close(connection); db = nil
-                throw HistoryError.message("Cannot migrate favorite clips.")
+                throw HistoryError.message("Cannot migrate clipboard history.")
             }
         }
     }
@@ -64,34 +64,93 @@ public actor HistoryStore {
         guard status == SQLITE_DONE else { throw failure() }; return result
     }
     @discardableResult public func capture(_ payload: CapturePayload) throws -> HistoryItem {
-        let pins = try load().filter(\.isPinned)
-        guard pins.count < maxItems else {
-            throw HistoryError.message("Capture skipped: favorites fill the item limit. Unpin or delete a favorite.")
-        }
-        let pinnedBytes = pins.filter { $0.kind == .image }.reduce(0) { $0 + $1.bytes }
+        let existing = try load()
+        let pins = existing.filter(\.isPinned)
+        // A refreshed copy sorts first even if the wall clock moved backward.
+        let created = Date(timeIntervalSince1970: max(Date().timeIntervalSince1970,
+            (existing.map { $0.created.timeIntervalSince1970 }.max() ?? 0).nextUp))
         let id = UUID().uuidString
         let item: HistoryItem
+        var fingerprint: String?
         switch payload {
         case .text(let text):
             guard text.utf8.count <= 2_000_000 else { throw HistoryError.message("Text skipped: exceeds 2 MB per item.") }
-            item = HistoryItem(id: id, kind: .text, created: Date(), text: text, imagePath: nil, thumbnailPath: nil, width: 0, height: 0, bytes: text.utf8.count)
+            // Swift String equality is canonically equivalent, not byte-exact.
+            if let match = existing.first(where: { $0.kind == .text && $0.text?.utf8.elementsEqual(text.utf8) == true }) {
+                return try refresh(match, created: created)
+            }
+            try requireItemCapacity(pins.count)
+            item = HistoryItem(id: id, kind: .text, created: created, text: text, imagePath: nil, thumbnailPath: nil, width: 0, height: 0, bytes: text.utf8.count)
         case .image(let data):
-            let (path, thumb, width, height, bytes) = try images.write(data, id: id, limit: maxBytes)
-            item = HistoryItem(id: id, kind: .image, created: Date(), text: nil, imagePath: path, thumbnailPath: thumb, width: width, height: height, bytes: bytes)
+            let normalized = try images.normalize(data)
+            if let match = try duplicateImage(normalized, in: existing) {
+                return try refresh(match, created: created)
+            }
+            try requireItemCapacity(pins.count)
+            let (path, thumb, width, height, bytes) = try images.write(normalized, id: id, limit: maxBytes)
+            item = HistoryItem(id: id, kind: .image, created: created, text: nil, imagePath: path, thumbnailPath: thumb, width: width, height: height, bytes: bytes)
+            fingerprint = normalized.fingerprint
         }
+        let pinnedBytes = pins.filter { $0.kind == .image }.reduce(0) { $0 + $1.bytes }
         do {
             if item.kind == .image && pinnedBytes + item.bytes > maxBytes {
                 throw HistoryError.message("Image skipped: favorites leave insufficient image storage. Unpin or delete a favorite.")
             }
-            let stmt = try statement("INSERT INTO clips (id,kind,created,text,image,thumbnail,width,height,bytes) VALUES (?,?,?,?,?,?,?,?,?)")
+            let stmt = try statement("INSERT INTO clips (id,kind,created,text,image,thumbnail,width,height,bytes,fingerprint) VALUES (?,?,?,?,?,?,?,?,?,?)")
             defer { sqlite3_finalize(stmt) }
             bind(item.id, to: stmt, at: 1); bind(item.kind.rawValue, to: stmt, at: 2)
             sqlite3_bind_double(stmt, 3, item.created.timeIntervalSince1970)
             bind(item.text, to: stmt, at: 4); bind(item.imagePath, to: stmt, at: 5); bind(item.thumbnailPath, to: stmt, at: 6)
             sqlite3_bind_int(stmt, 7, Int32(item.width)); sqlite3_bind_int(stmt, 8, Int32(item.height)); sqlite3_bind_int64(stmt, 9, Int64(item.bytes))
+            bind(fingerprint, to: stmt, at: 10)
             guard sqlite3_step(stmt) == SQLITE_DONE else { throw failure() }
         } catch { images.remove(item.imagePath); images.remove(item.thumbnailPath); throw error }
         try enforceLimits(); return item
+    }
+    private func requireItemCapacity(_ pinnedCount: Int) throws {
+        guard pinnedCount < maxItems else {
+            throw HistoryError.message("Capture skipped: favorites fill the item limit. Unpin or delete a favorite.")
+        }
+    }
+    private func refresh(_ item: HistoryItem, created: Date) throws -> HistoryItem {
+        let stmt = try statement("UPDATE clips SET created = ? WHERE id = ?")
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_double(stmt, 1, created.timeIntervalSince1970); bind(item.id, to: stmt, at: 2)
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw failure() }
+        return HistoryItem(id: item.id, kind: item.kind, created: created, text: item.text,
+                           imagePath: item.imagePath, thumbnailPath: item.thumbnailPath,
+                           width: item.width, height: item.height, bytes: item.bytes, isPinned: item.isPinned)
+    }
+    private func duplicateImage(_ incoming: ImageStore.Normalized, in items: [HistoryItem]) throws -> HistoryItem? {
+        let stmt = try statement("SELECT id,fingerprint FROM clips WHERE kind = 'image' AND width = ? AND height = ?")
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int(stmt, 1, Int32(incoming.width)); sqlite3_bind_int(stmt, 2, Int32(incoming.height))
+        var fingerprints: [String: String] = [:]
+        var status = sqlite3_step(stmt)
+        while status == SQLITE_ROW {
+            if let id = sqlite3_column_text(stmt, 0), let hash = sqlite3_column_text(stmt, 1) {
+                fingerprints[String(cString: id)] = String(cString: hash)
+            }
+            status = sqlite3_step(stmt)
+        }
+        guard status == SQLITE_DONE else { throw failure() }
+        // load() is pinned-first: if legacy duplicates exist, favor the pinned
+        // record. Existing duplicate history is never deleted as a migration.
+        for item in items where item.kind == .image && item.width == incoming.width && item.height == incoming.height {
+            if let hash = fingerprints[item.id], hash != incoming.fingerprint { continue }
+            // Missing/corrupt candidates cannot suppress a new valid capture.
+            guard images.exists(item.thumbnailPath),
+                  let data = try? imageData(for: item), let candidate = try? images.normalize(data) else { continue }
+            if fingerprints[item.id] == nil {
+                let update = try statement("UPDATE clips SET fingerprint = ? WHERE id = ?")
+                defer { sqlite3_finalize(update) }
+                bind(candidate.fingerprint, to: update, at: 1); bind(item.id, to: update, at: 2)
+                guard sqlite3_step(update) == SQLITE_DONE else { throw failure() }
+            }
+            // Hashes only select candidates. Full comparison makes collisions safe.
+            if candidate.width == incoming.width && candidate.height == incoming.height && candidate.pixels == incoming.pixels { return item }
+        }
+        return nil
     }
     public func delete(_ id: String) throws {
         guard let item = try load().first(where: { $0.id == id }) else { return }

@@ -120,7 +120,10 @@ final class HistoryStoreTests {
         let pinnedImage = try await byteStore.capture(.image(png()))
         try await byteStore.setPinned(pinnedImage.id, pinned: true)
         try await byteStore.setLimits(items: 3, bytes: pinnedImage.bytes)
-        do { _ = try await byteStore.capture(.image(png())); fail("Pinned image budget must block capture") } catch {}
+        let distinctBitmap = try unwrap(NSBitmapImageRep(data: png()))
+        distinctBitmap.bitmapData![0] = 0
+        let distinctPNG = try unwrap(distinctBitmap.representation(using: .png, properties: [:]))
+        do { _ = try await byteStore.capture(.image(distinctPNG)); fail("Pinned image budget must block capture") } catch {}
         _ = try await byteStore.capture(.text("text still fits"))
         expectEqual(try await byteStore.load().count, 2)
         expectEqual(try FileManager.default.contentsOfDirectory(atPath: byteStore.root.appendingPathComponent("Images").path).count, 2)
