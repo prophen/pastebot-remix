@@ -127,4 +127,4 @@ The test document created in TextEdit and the two demonstration history entries 
 - Framework reference: [Apple NSHostingView sizingOptions](https://developer.apple.com/documentation/swiftui/nshostingview/sizingoptions).
 - Release build and Developer ID signing/strict signature validation passed. Build 7 is installed and running from the stable Expansion path; the known build 6 source remains in its release directory for rollback.
 - The system still reports Launch at Login enabled after updating the known installed bundle in place; the update did not change registration or real history.
-- Build 7 manual close/reopen confirmation is pending; #1 stays open until that reported regression is confirmed resolved.
+- User confirmed on build 7 that resizing, closing, and reopening with Option-Command-V preserves the size. The reported close/reopen regression is resolved; #1 is accepted for closure.
