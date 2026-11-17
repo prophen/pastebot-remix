@@ -64,3 +64,10 @@ The test document created in TextEdit and the two demonstration history entries 
 - Arrow keys preview; row context menus offer Preview and Copy Only. Return, Command-1…9, and the Copy button remain copy-only.
 - The user also confirmed that clicking an image row pasted the image into TextEdit. Text and PNG/TIFF use the same restore path.
 - Apple accepted corrected build submission `86b4229b-afcf-4b3d-b933-047b545b108c`. The final `Clipboard-Remix-0.2.0-arm64.zip` was extracted and passed signature, stapled-ticket, and Gatekeeper verification. The earlier intermediate 0.2.0 archive was withdrawn during testing.
+
+## Version 0.2.1 — change paste destination by focus
+
+- The open palette follows activation of other apps and updates its destination footer. Activating Clipboard Remix itself does not replace the external destination.
+- The destination's focused field is read at click time, so changing fields or windows within the same app is supported. Once a paste starts, its app/field snapshot stays fixed and the existing delivery guards still apply.
+- All eight automated check groups pass. The user confirmed that leaving the palette open, focusing a different location, and clicking a history item pastes into the new location.
+- Apple accepted notarization submission `54f6f1ba-75a4-40ec-a1aa-2b5314d1c3c7`; the 0.2.1 app is stapled and Gatekeeper-accepted.
