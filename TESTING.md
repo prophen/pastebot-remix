@@ -171,8 +171,10 @@ Implemented issues #4–#7 with three subagents, followed by root integration an
 - Replaced the SwiftUI PNG-only item provider with a native AppKit dragging session. Its dragging pasteboard advertises a concrete `public.file-url` PNG plus PNG image bytes, matching file-drop targets that require a file rather than an image-only representation.
 - The PNG is prepared asynchronously when its preview loads. An owned snapshot keeps it valid through preview/drag lifetime; cancellation sends no paste and removes no history. The source operation is copy-only. A full seven-day cleanup grace starts when the snapshot is released.
 - Regression checks use an isolated named pasteboard: writing the native drag snapshot yields a readable PNG file URL via `readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])` and matching PNG bytes. The file survives deletion of its disposable history source and cleanup attempts while active.
-- All 13 core groups and native palette/model checks pass. Actual Comet + ChatGPT acceptance on build 9 is pending; automated pasteboard tests alone do not establish browser UI compatibility.
+- All 13 core groups and native palette/model checks pass. User confirmed on build 9 that Comet + ChatGPT accepts the image, TextEdit still works, and cancelling a drag preserves the history item. These are manual receiver checks, separate from automated pasteboard tests.
 - A repeated-export regression test also caught an existing-directory creation error; exporting now reuses the owned export folder correctly.
 - Long-lived-preview tests verify active snapshots survive cleanup and receive a fresh grace period on release.
 - Test fixtures now use an explicit CLIPBOARD_TEST_ROOT supplied by build.sh: Foundation's temporaryDirectory was observed ignoring TMPDIR on this macOS version. The final verification run placed fixtures on Expansion.
 - Final release build, Developer ID signing, and strict signature verification passed. Signed source: `/Volumes/Expansion/pastebot-remix-build/releases/release-jA0t46C1/Clipboard Remix.app`; build 9 is installed/running at the stable path, with Launch at Login still enabled.
+
+- Issue #6 accepted after the user reported “yes everything is working” for the Comet + ChatGPT, TextEdit, and cancellation retest. All seven feature tickets are now completed.
