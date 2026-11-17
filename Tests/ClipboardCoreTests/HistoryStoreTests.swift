@@ -1,5 +1,6 @@
 import AppKit
 import ClipboardCore
+import CSQLite
 
 final class HistoryStoreTests {
     var teardown: [() -> Void] = []
@@ -76,6 +77,55 @@ final class HistoryStoreTests {
         let items = try await store.load()
         expectTrue(items.isEmpty)
         expectTrue(try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("Images").path).isEmpty)
+    }
+    func testFavoritesMigrationAndRetention() async throws {
+        let root = try temporaryRoot()
+        var db: OpaquePointer?
+        expectEqual(sqlite3_open(root.appendingPathComponent("history.sqlite").path, &db), SQLITE_OK)
+        let oldSchema = """
+        CREATE TABLE clips (id TEXT PRIMARY KEY, kind TEXT NOT NULL, created REAL NOT NULL, text TEXT, image TEXT, thumbnail TEXT, width INTEGER NOT NULL, height INTEGER NOT NULL, bytes INTEGER NOT NULL);
+        INSERT INTO clips VALUES ('legacy','text',1,'legacy favorite',NULL,NULL,0,0,15);
+        """
+        expectEqual(sqlite3_exec(db, oldSchema, nil, nil, nil), SQLITE_OK)
+        sqlite3_close(db)
+        let store = try HistoryStore(root: root, maxItems: 3)
+        expectFalse(try await store.load()[0].isPinned)
+        try await store.setPinned("legacy", pinned: true)
+        let image = try await store.capture(.image(png()))
+        try await store.setPinned(image.id, pinned: true)
+        _ = try await store.capture(.text("evicted"))
+        let newest = try await store.capture(.text("new favorite match"))
+        let reopened = try HistoryStore(root: root, maxItems: 3)
+        try await reopened.recover()
+        let rows = try await reopened.load()
+        expectEqual(rows.map(\.id), [image.id, "legacy", newest.id])
+        expectEqual(HistoryItem.matching(rows, query: "favorite", filter: .text).map(\.id), ["legacy", newest.id])
+        expectEqual(HistoryItem.matching(rows, query: "", filter: .images).map(\.id), [image.id])
+        expectEqual(HistoryItem.matching(rows, query: "favorite", filter: .images).count, 0)
+        expectTrue(!(try await reopened.imageData(for: image)).isEmpty)
+        try await reopened.setPinned(newest.id, pinned: true)
+        do { _ = try await reopened.capture(.text("no room")); fail("Pins must block capture") } catch {}
+        expectEqual(try await reopened.load().count, 3)
+        // Lowering limits never removes existing pins or their image files.
+        try await reopened.setLimits(items: 1, bytes: 1)
+        expectEqual(try await reopened.load().count, 3)
+        expectTrue(!(try await reopened.imageData(for: image)).isEmpty)
+        try await reopened.setPinned(newest.id, pinned: false)
+        expectEqual(try await reopened.load().count, 2)
+        try await reopened.clear()
+        expectTrue(try await reopened.load().isEmpty)
+        expectTrue(try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("Images").path).isEmpty)
+
+        let byteStore = try HistoryStore(root: temporaryRoot())
+        let pinnedImage = try await byteStore.capture(.image(png()))
+        try await byteStore.setPinned(pinnedImage.id, pinned: true)
+        try await byteStore.setLimits(items: 3, bytes: pinnedImage.bytes)
+        do { _ = try await byteStore.capture(.image(png())); fail("Pinned image budget must block capture") } catch {}
+        _ = try await byteStore.capture(.text("text still fits"))
+        expectEqual(try await byteStore.load().count, 2)
+        expectEqual(try FileManager.default.contentsOfDirectory(atPath: byteStore.root.appendingPathComponent("Images").path).count, 2)
+        try await byteStore.delete(pinnedImage.id)
+        expectTrue(try FileManager.default.contentsOfDirectory(atPath: byteStore.root.appendingPathComponent("Images").path).isEmpty)
     }
     func testOwnWritesAreSuppressedButLaterCopiesAreNot() {
         var tracker = ClipboardChangeTracker(initial: 5)

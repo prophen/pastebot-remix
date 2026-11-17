@@ -34,6 +34,10 @@ enum CheckError: Error { case nilValue }
         try await paste.testNeverSendsAfterCancellationOrClipboardChange()
         try await paste.testUnstableOrMissingFocusTimesOut()
         print("PASS paste delivery focus, cancellation, clipboard changes, and timeout")
-        print("All 8 check groups passed.")
+        try await storage.testFavoritesMigrationAndRetention()
+        print("PASS favorites migration, ordering/filtering, reopen, capacity and file retention")
+        testPaletteGeometry()
+        print("PASS palette geometry restoration and disconnected display recovery")
+        print("All 10 check groups passed.")
     }
 }

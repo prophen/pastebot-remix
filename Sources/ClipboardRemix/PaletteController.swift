@@ -16,6 +16,9 @@ final class PalettePanel: NSPanel {
     private var keyMonitor: Any?
     private var menuTracking = false
     private var menuObservers: [NSObjectProtocol] = []
+    private var screenObserver: NSObjectProtocol?
+    private var applyingGeometry = false
+    private var geometryInitialized = false
     private var activationObserver: NSObjectProtocol?
     init(model: AppModel) {
         self.model = model
@@ -31,7 +34,11 @@ final class PalettePanel: NSPanel {
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         panel.minSize = NSSize(width: 740, height: 490)
         panel.contentView = NSHostingView(rootView: PaletteView(model: model))
+        restoreGeometry()
         panel.delegate = self
+        screenObserver = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.restoreGeometry() }
+        }
         model.dismiss = { [weak self] in self?.hide() }
         model.pasteItem = { [weak self] item in self?.paste(item) }
         menuObservers.append(NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
@@ -76,8 +83,9 @@ final class PalettePanel: NSPanel {
             previousApp = nil
             model.pasteDestinationName = nil
             if let app = NSWorkspace.shared.frontmostApplication { rememberDestination(app) }
-            panel.center()
+            restoreGeometry()
         }
+        model.login.refresh()
         model.openGeneration += 1
         panel.makeKeyAndOrderFront(nil)
     }
@@ -174,5 +182,27 @@ final class PalettePanel: NSPanel {
             }
         }
     }
+    private func restoreGeometry() {
+        let saved: CGRect?
+        if geometryInitialized { saved = panel.frame }
+        else if let values = UserDefaults.standard.array(forKey: "paletteFrame") as? [Double], values.count == 4 {
+            saved = CGRect(x: values[0], y: values[1], width: values[2], height: values[3])
+        } else { saved = nil }
+        guard let frame = PaletteGeometry.restore(saved, screens: NSScreen.screens.map(\.visibleFrame)) else { return }
+        applyingGeometry = true
+        // Permit recovery even onto a display smaller than the normal minimum.
+        panel.minSize = CGSize(width: min(740, frame.width), height: min(490, frame.height))
+        panel.setFrame(frame, display: panel.isVisible)
+        applyingGeometry = false
+        geometryInitialized = true
+        saveGeometry()
+    }
+    private func saveGeometry() {
+        guard geometryInitialized, !applyingGeometry else { return }
+        let frame = panel.frame
+        UserDefaults.standard.set([frame.origin.x, frame.origin.y, frame.width, frame.height], forKey: "paletteFrame")
+    }
+    func windowDidMove(_ notification: Notification) { saveGeometry() }
+    func windowDidResize(_ notification: Notification) { saveGeometry() }
     func windowShouldClose(_ sender: NSWindow) -> Bool { hide(); return false }
 }

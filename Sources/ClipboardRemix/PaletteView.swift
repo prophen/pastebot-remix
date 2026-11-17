@@ -30,6 +30,8 @@ struct PaletteView: View {
             HStack(spacing: 12) {
                 Menu {
                     Button(model.paused ? "Resume Capture" : "Pause Capture") { model.paused.toggle() }
+                    LoginMenu(controller: model.login)
+                    Divider()
                     Button("Delete Selected", action: model.deleteSelected).disabled(model.selected == nil)
                     Button("Clear History…", action: model.clear)
                     Divider()
@@ -53,9 +55,10 @@ struct PaletteView: View {
                     .buttonStyle(.borderedProminent).disabled(model.selected == nil || model.isCopying)
             }.font(.caption).padding(12)
         }
-        .frame(minWidth: 740, minHeight: 460)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.regularMaterial)
         .onAppear { searchFocused = true }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)) { _ in model.login.refresh() }
         .onChange(of: model.openGeneration) { _, _ in searchFocused = true }
     }
     private var history: some View {
@@ -71,8 +74,8 @@ struct PaletteView: View {
                         }.padding(16)
                     }
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
-                        if index == 0 || !Calendar.current.isDate(item.created, inSameDayAs: rows[index - 1].created) {
-                            Text(dayLabel(item.created)).font(.caption.weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 8).padding(.top, 10)
+                        if index == 0 || item.isPinned != rows[index - 1].isPinned || (!item.isPinned && !Calendar.current.isDate(item.created, inSameDayAs: rows[index - 1].created)) {
+                            Text(item.isPinned ? "Pinned" : dayLabel(item.created)).font(.caption.weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 8).padding(.top, 10)
                         }
                             HStack(spacing: 9) {
                                 if item.kind == .image {
@@ -85,6 +88,7 @@ struct PaletteView: View {
                                     Text(item.created, style: .time).font(.caption2).foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 0)
+                                if item.isPinned { Image(systemName: "pin.fill").foregroundStyle(.secondary).accessibilityLabel("Pinned favorite") }
                                 if index < 9 { Text("⌘\(index + 1)").font(.caption2).foregroundStyle(.secondary) }
                             }.padding(8).frame(maxWidth: .infinity, alignment: .leading)
                                 .background(model.selectedID == item.id ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
@@ -108,6 +112,7 @@ struct PaletteView: View {
                         .disabled(model.isCopying)
                         .help("Click to paste. Double-click to copy only. The palette stays open. Use arrow keys to preview.")
                         .contextMenu {
+                            Button(item.isPinned ? "Unpin" : "Pin Favorite") { model.togglePin(item) }
                             Button("Preview") { model.selectedID = item.id }
                             Button("Copy Only") { model.copy(item) }
                         }

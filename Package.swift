@@ -8,7 +8,7 @@ let package = Package(
         .systemLibrary(name: "CSQLite"),
         .target(name: "ClipboardCore", dependencies: ["CSQLite"]),
         .executableTarget(name: "ClipboardRemix", dependencies: ["ClipboardCore"]),
-        .executableTarget(name: "ClipboardChecks", dependencies: ["ClipboardCore"], path: "Tests/ClipboardCoreTests")
+        .executableTarget(name: "ClipboardChecks", dependencies: ["ClipboardCore", "CSQLite"], path: "Tests/ClipboardCoreTests")
     ],
     swiftLanguageModes: [.v5]
 )

@@ -12,6 +12,7 @@ import ClipboardCore
     @Published var isCopying = false
     @Published var openGeneration = 0
     @Published var pasteDestinationName: String?
+    let login = LoginController()
     let store: HistoryStore
     let monitor: ClipboardMonitor
     var dismiss: (() -> Void)?
@@ -70,6 +71,12 @@ import ClipboardCore
         }
         guard ok else { throw HistoryError.message("Couldn't write to the clipboard. Try again.") }
     }
+    func togglePin(_ item: HistoryItem) {
+        Task {
+            do { try await store.setPinned(item.id, pinned: !item.isPinned); try await reload() }
+            catch { status = error.localizedDescription }
+        }
+    }
     func deleteSelected() {
         guard let id = selectedID else { return }
         Task { do { try await store.delete(id); try await reload() } catch { status = error.localizedDescription } }
@@ -77,7 +84,7 @@ import ClipboardCore
     func clear() {
         let alert = NSAlert()
         alert.messageText = "Clear clipboard history?"
-        alert.informativeText = "This removes all saved text and images. Your current system clipboard is unchanged."
+        alert.informativeText = "This removes all saved text and images, including pinned favorites. Your current system clipboard is unchanged."
         alert.addButton(withTitle: "Cancel"); alert.addButton(withTitle: "Clear History")
         guard alert.runModal() == .alertSecondButtonReturn else { return }
         Task { do { try await store.clear(); try await reload() } catch { status = error.localizedDescription } }

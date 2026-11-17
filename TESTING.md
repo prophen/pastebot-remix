@@ -42,7 +42,7 @@ Seven check groups cover:
 - Storage limits are fixed at 500 entries / 500 MB of image files, rather than exposed as settings. Shortcut choice is limited to two presets.
 - Polling can miss copies less than 0.4 seconds apart; a bounded queue skips copies if processing falls behind and reports it in the palette.
 - Captured text and images are local and unencrypted. Sensitive marker handling is best effort.
-- Login launch and the explicitly deferred product features are not implemented. Public download testing on another Mac is still pending.
+- Login launch and favorites were subsequently implemented in 0.3.0 below; other deferred product features remain backlog. Public download testing on another Mac is still pending.
 
 The test document created in TextEdit and the two demonstration history entries are left available for inspection. The generated PNG fixture is under `/Volumes/Expansion/pastebot-remix-build/clipboard-test.png`.
 
@@ -83,4 +83,33 @@ The test document created in TextEdit and the two demonstration history entries 
 
 - The reported screenshot identified failure to read T3 Code's focused Accessibility element before activation. Electron destinations now receive the documented AXManualAccessibility opt-in. If a field is unavailable while the palette owns keyboard focus, delivery waits for the locked destination app to regain focus, then acquires a field and requires stable checks before sending. No paste is sent without a readable field.
 - Installed the approved icon in Resources/AppIcon.icns; the build copies it into Contents/Resources before signing and Info.plist declares AppIcon.
-- All eight automated check groups pass. Manual click-to-paste confirmation in T3 Code is still pending.
+- All eight automated check groups pass. The user confirmed single-click paste into T3 Code works in build 5. This is a manual field-level result, not an automated TextEdit claim.
+
+
+## Version 0.3.0 build 6 — first feature batch
+
+- All **10 automated check groups pass** using `./scripts/build.sh test`. The eight existing clipboard/paste groups remain green.
+- Favorites checks construct an actual pre-pin SQLite schema, migrate it without losing text, persist text/image pins across reopening, verify pinned-first ordering with combined search/type filters, and protect original/thumbnail files through recovery and count/byte pressure. They verify full-capacity capture rejection, no orphan files after rejection, text capture with a full pinned image budget, unpin eviction, explicit pinned deletion, and clear including pins.
+- Geometry checks cover unchanged restoration, negative-coordinate secondary monitors, disconnected-display fallback, retained size, repeated restore, first-use centering, oversized and corrupt geometry, tiny displays, and no-screen handling.
+- Tests use temporary directories on Expansion and isolated pasteboards. They do not clear or modify real history.
+- Window moves/resizes save to UserDefaults. Reopening/relaunching restores that frame; screen changes clamp it to an available visible frame.
+- Login controls use the actual `SMAppService.mainApp.status`, not a saved preference. Registration is only attempted on explicit enable from the stable installed copy. Disable unregisters; pending approval and failures are visible, with a System Settings action. Startup has no automatic palette presentation.
+- Installation is restricted to a signed app at the documented stable Expansion path; the installer refuses existing destinations. Expansion must be available at login.
+
+### Remaining manual checks for build 6
+
+- Move and resize the palette, close/reopen, then quit/relaunch; physically disconnect its display while open and while quit. Geometry policy is automated, but these AppKit/display integration cases still need a manual pass.
+- Pin/unpin real text and images through the context menu; verify indicators, grouping, selection, and keyboard result numbering while searching/filtering.
+- Opt in to Launch at Login, approve in System Settings if requested, log out/in with Expansion mounted, verify quiet capture, then disable and confirm it no longer launches. Registration/approval mutations were deliberately not exercised because login launch must remain opt-in.
+- Recheck single-click paste, exclusive double-click copy, keyboard copy/dismiss, and follow-focus in real destination fields on build 6. Build 5’s user-confirmed T3 Code paste remains the latest field-level result.
+- No public release was published; notarization of this build is not part of this implementation pass.
+
+
+### Signed installation observed
+
+- Developer ID signing with hardened runtime and timestamp passed, as did strict signature validation. Version 0.3.0 build 6 was installed at `/Volumes/Expansion/pastebot-remix-build/Installed/Clipboard Remix.app` and launched successfully; the older build was quit.
+- The installed executable’s read-only login status check returned **3 / notFound** before and after launch. No registration was enabled or disabled. The UI reports this actual status as service not found / not enabled.
+- Native Computer Use inspection was not approved for Clipboard Remix, so no native UI checks are claimed for this build. The manual checks listed above remain outstanding.
+- Read-only inspection confirmed the real database gained the pin column and still had six entries (zero pinned); no real clips were used as test fixtures.
+- Re-running the installer against the occupied stable destination correctly refused to overwrite it.
+- Final signed source build: `/Volumes/Expansion/pastebot-remix-build/releases/release-9EBpH4Qe/Clipboard Remix.app`; the same app is installed and running at the stable path. Strict signature validation passed. Notarization was not submitted.

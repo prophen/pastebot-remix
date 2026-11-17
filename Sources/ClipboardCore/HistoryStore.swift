@@ -24,6 +24,16 @@ public actor HistoryStore {
         guard sqlite3_exec(connection, schema, nil, nil, nil) == SQLITE_OK else {
             sqlite3_close(connection); db = nil; throw HistoryError.message("Cannot initialize history database.")
         }
+        // Probe the column rather than assuming a schema version from older builds.
+        var probe: OpaquePointer?
+        let hasPins = sqlite3_prepare_v2(connection, "SELECT pinned FROM clips LIMIT 0", -1, &probe, nil) == SQLITE_OK
+        sqlite3_finalize(probe)
+        if !hasPins {
+            guard sqlite3_exec(connection, "ALTER TABLE clips ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0", nil, nil, nil) == SQLITE_OK else {
+                sqlite3_close(connection); db = nil
+                throw HistoryError.message("Cannot migrate favorite clips.")
+            }
+        }
     }
     deinit { sqlite3_close(db) }
     private func statement(_ sql: String) throws -> OpaquePointer {
@@ -37,7 +47,7 @@ public actor HistoryStore {
         else { sqlite3_bind_null(stmt, index) }
     }
     public func load() throws -> [HistoryItem] {
-        let stmt = try statement("SELECT id,kind,created,text,image,thumbnail,width,height,bytes FROM clips ORDER BY created DESC, rowid DESC")
+        let stmt = try statement("SELECT id,kind,created,text,image,thumbnail,width,height,bytes,pinned FROM clips ORDER BY pinned DESC, created DESC, rowid DESC")
         defer { sqlite3_finalize(stmt) }
         func value(_ index: Int32) -> String? {
             guard let p = sqlite3_column_text(stmt, index) else { return nil }
@@ -47,13 +57,18 @@ public actor HistoryStore {
         var status = sqlite3_step(stmt)
         while status == SQLITE_ROW {
             if let id = value(0), let kind = value(1).flatMap(ClipKind.init(rawValue:)) {
-                result.append(HistoryItem(id: id, kind: kind, created: Date(timeIntervalSince1970: sqlite3_column_double(stmt, 2)), text: value(3), imagePath: value(4), thumbnailPath: value(5), width: Int(sqlite3_column_int(stmt, 6)), height: Int(sqlite3_column_int(stmt, 7)), bytes: Int(sqlite3_column_int64(stmt, 8))))
+                result.append(HistoryItem(id: id, kind: kind, created: Date(timeIntervalSince1970: sqlite3_column_double(stmt, 2)), text: value(3), imagePath: value(4), thumbnailPath: value(5), width: Int(sqlite3_column_int(stmt, 6)), height: Int(sqlite3_column_int(stmt, 7)), bytes: Int(sqlite3_column_int64(stmt, 8)), isPinned: sqlite3_column_int(stmt, 9) != 0))
             }
             status = sqlite3_step(stmt)
         }
         guard status == SQLITE_DONE else { throw failure() }; return result
     }
     @discardableResult public func capture(_ payload: CapturePayload) throws -> HistoryItem {
+        let pins = try load().filter(\.isPinned)
+        guard pins.count < maxItems else {
+            throw HistoryError.message("Capture skipped: favorites fill the item limit. Unpin or delete a favorite.")
+        }
+        let pinnedBytes = pins.filter { $0.kind == .image }.reduce(0) { $0 + $1.bytes }
         let id = UUID().uuidString
         let item: HistoryItem
         switch payload {
@@ -65,7 +80,10 @@ public actor HistoryStore {
             item = HistoryItem(id: id, kind: .image, created: Date(), text: nil, imagePath: path, thumbnailPath: thumb, width: width, height: height, bytes: bytes)
         }
         do {
-            let stmt = try statement("INSERT INTO clips VALUES (?,?,?,?,?,?,?,?,?)")
+            if item.kind == .image && pinnedBytes + item.bytes > maxBytes {
+                throw HistoryError.message("Image skipped: favorites leave insufficient image storage. Unpin or delete a favorite.")
+            }
+            let stmt = try statement("INSERT INTO clips (id,kind,created,text,image,thumbnail,width,height,bytes) VALUES (?,?,?,?,?,?,?,?,?)")
             defer { sqlite3_finalize(stmt) }
             bind(item.id, to: stmt, at: 1); bind(item.kind.rawValue, to: stmt, at: 2)
             sqlite3_bind_double(stmt, 3, item.created.timeIntervalSince1970)
@@ -82,6 +100,13 @@ public actor HistoryStore {
         guard sqlite3_step(stmt) == SQLITE_DONE else { throw failure() }
         images.remove(item.imagePath); images.remove(item.thumbnailPath)
     }
+    public func setPinned(_ id: String, pinned: Bool) throws {
+        let stmt = try statement("UPDATE clips SET pinned = ? WHERE id = ?")
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_int(stmt, 1, pinned ? 1 : 0); bind(id, to: stmt, at: 2)
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw failure() }
+        try enforceLimits()
+    }
     public func clear() throws { for item in try load() { try delete(item.id) }; sqlite3_exec(db, "PRAGMA wal_checkpoint(TRUNCATE); VACUUM;", nil, nil, nil) }
     public func setLimits(items: Int, bytes: Int) throws {
         maxItems = max(1, items); maxBytes = max(1, bytes); try enforceLimits()
@@ -90,7 +115,8 @@ public actor HistoryStore {
         var items = try load()
         var bytes = items.filter { $0.kind == .image }.reduce(0) { $0 + $1.bytes }
         while items.count > maxItems || bytes > maxBytes {
-            guard let item = items.popLast() else { break }
+            guard let index = items.lastIndex(where: { !$0.isPinned }) else { break }
+            let item = items.remove(at: index)
             try delete(item.id); if item.kind == .image { bytes -= item.bytes }
         }
     }

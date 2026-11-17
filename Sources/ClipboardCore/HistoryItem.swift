@@ -12,6 +12,7 @@ public struct HistoryItem: Identifiable, Equatable, Sendable {
     public let width: Int
     public let height: Int
     public let bytes: Int
+    public var isPinned: Bool = false
     public var title: String { text.map { String($0.prefix(160)).replacingOccurrences(of: "\n", with: " ") } ?? "Image · \(width) × \(height)" }
     public static func matching(_ items: [Self], query: String, filter: ClipFilter) -> [Self] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)

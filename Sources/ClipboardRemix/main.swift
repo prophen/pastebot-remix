@@ -1,5 +1,6 @@
 import AppKit
 import ClipboardCore
+import ServiceManagement
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
@@ -26,7 +27,7 @@ import ClipboardCore
         shortcut = GlobalShortcut(); shortcut.onPress = { [weak self] in self?.palette.toggle() }
         shortcutRegistered = shortcut.register(shift: shiftShortcut)
         if !shortcutRegistered { model.status = "Global shortcut is unavailable. Open from the menu bar; right-click it to choose the alternate shortcut." }
-        Task { await model.start(); palette.show() }
+        Task { await model.start() }
     }
     private func installEditMenu() {
         let menu = NSMenu()
@@ -65,6 +66,10 @@ import ClipboardCore
 }
 
 MainActor.assumeIsolated {
+    if CommandLine.arguments.contains("--login-status") {
+        print("Launch at Login system status: \(SMAppService.mainApp.status.rawValue) (0=off, 1=enabled, 2=requires approval, 3=not found)")
+        exit(0)
+    }
     let app = NSApplication.shared
     let delegate = AppDelegate()
     app.delegate = delegate

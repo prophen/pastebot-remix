@@ -15,8 +15,10 @@ The default build is ad-hoc signed for local development. For Developer ID signi
 
 ## Use
 
-- Capture starts when the app launches. It does not import whatever was on the clipboard before launch.
+- Launch is quiet: capture starts without opening the palette. It does not import whatever was on the clipboard before launch.
 - Click the clipboard menu-bar icon or press **Option-Command-V** to open the palette.
+- The palette remembers its size and position across closes and relaunches, and moves back onto an available display after a monitor disconnects.
+- Right-click a text or image row to **Pin Favorite / Unpin**. Matching favorites appear first with a pin indicator; search and type filters still apply.
 - Type to search text; choose **All / Text / Images**. Images have time and dimension labels, with no OCR or filename search.
 - The footer names the paste destination (for example, **Paste → TextEdit**). While the palette stays open, focus another app to change the destination. You can also focus a different field or window within the same app; the next row click uses that field.
 - **Click a history row** to paste it into the most recently focused field outside Clipboard Remix. On first use, enable Clipboard Remix in **System Settings → Privacy & Security → Accessibility**, then focus your destination and reopen the palette. No paste is queued while permission is missing.
@@ -32,11 +34,30 @@ The default build is ad-hoc signed for local development. For Developer ID signi
 
 History is stored in `~/Library/Application Support/ClipboardRemix/`: `history.sqlite` plus `Images/` containing PNG originals and thumbnails. Nothing is uploaded. History is unencrypted on disk and accessible to your Mac account. Pause capture before copying anything you do not want saved.
 
-The MVP keeps up to **500 entries** and **500 MB of image files including thumbnails**, evicting oldest entries first. Text is limited to 2 MB per entry. Images over the storage limit or 80 megapixels are skipped with a visible status message. Limits are currently fixed. Clearing saved history does not clear the current system clipboard.
+The MVP keeps up to **500 entries** and **500 MB of image files including thumbnails**, evicting oldest unpinned entries first. Favorites count toward both limits and are never automatically evicted. If favorites fill the item limit, new captures are skipped with a status message. An image that cannot fit alongside pinned images is also skipped; text can still be saved when only the image budget is full. Unpinning makes an item eligible for eviction immediately. Existing favorites survive even if a future limit is lowered below their total. Text is limited to 2 MB per entry. Images over the storage limit or 80 megapixels are skipped with a visible status message. Limits are currently fixed. Explicit deletion can remove a favorite. **Clear History removes all entries, including favorites and their files**, after confirmation; it does not clear the current system clipboard.
 
 Recognized concealed, transient, and generated clipboard markers are skipped, as are file URL copies. This is not universal secret detection. PNG and TIFF clipboard images are supported; images are normalized to PNG. Rich text becomes plain text. Files, OCR, editing, sync, and collections are outside this MVP.
 
 Polling occurs every 0.4 seconds; multiple rapid copies between polls can be missed. Copies while paused or while the app is quit are not recorded. Re-copying the same content is a new entry; restoring an item through this app is not.
+
+## Launch at Login (optional)
+
+Launch at Login is off by default. The gear menu shows the actual macOS ServiceManagement status, with enable/disable, refresh, and Login Items settings controls. Approval-required means macOS is awaiting approval (or consent was revoked); it is not shown as enabled. Errors include recovery instructions. See [Apple’s status documentation](https://developer.apple.com/documentation/servicemanagement/smappservice/status-swift.enum).
+
+For this external-drive build, the supported stable location is:
+
+`/Volumes/Expansion/pastebot-remix-build/Installed/Clipboard Remix.app`
+
+Prepare a Developer ID signed build using [RELEASE.md](RELEASE.md), then install it:
+
+```sh
+./scripts/install.sh '/Volumes/Expansion/pastebot-remix-build/releases/release-XXXXXXXX/Clipboard Remix.app'
+open '/Volumes/Expansion/pastebot-remix-build/Installed/Clipboard Remix.app'
+```
+
+Quit any older running copy before opening the installed app. Installation refuses to overwrite an existing destination and does not enable login launch. Use the palette gear menu to opt in; disabling unregisters the app. **Expansion must be mounted and accessible at login**. If it is unavailable, launch the app yourself after mounting it. All launches start capture quietly; use the menu bar or Option-Command-V to open the palette.
+
+Before replacing or moving the installed app, disable Launch at Login and quit it. Keep the previous known app as a backup, install the new signed build into the now-empty stable location, launch it, and opt in again if desired. Do not register temporary release-directory copies. A read-only diagnostic is available via the installed executable’s `--login-status` argument.
 
 ## Verification
 
@@ -44,7 +65,7 @@ Polling occurs every 0.4 seconds; multiple rapid copies between polls can be mis
 ./scripts/build.sh test
 ```
 
-The standalone test executable runs without XCTest or Xcode. Tests use temporary storage on the build volume and isolated named pasteboards. They cover mixed persistence, Unicode/multiline text, search/filter combinations, image dimensions/transparency, copy-back representations, self-write suppression, pause/markers, retention, missing-file recovery, and orphan cleanup.
+The standalone test executable runs without XCTest or Xcode. Tests use temporary storage on the build volume and isolated named pasteboards. They cover mixed persistence, Unicode/multiline text, search/filter combinations, image dimensions/transparency, copy-back representations, self-write suppression, pause/markers, retention, missing-file recovery, orphan cleanup, favorite migration/order/capacity protection, and display geometry recovery.
 
 See [TESTING.md](TESTING.md) for observed results and remaining manual checks.
 
