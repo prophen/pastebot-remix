@@ -19,7 +19,7 @@ final class PalettePanel: NSPanel {
     private var activationObserver: NSObjectProtocol?
     init(model: AppModel) {
         self.model = model
-        panel = PalettePanel(contentRect: NSRect(x: 0, y: 0, width: 800, height: 530), styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        panel = PalettePanel(contentRect: NSRect(x: 0, y: 0, width: 800, height: 530), styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel], backing: .buffered, defer: false)
         super.init()
         panel.title = "Clipboard Remix"
         panel.titleVisibility = .hidden
@@ -79,7 +79,6 @@ final class PalettePanel: NSPanel {
             panel.center()
         }
         model.openGeneration += 1
-        NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
     }
     func hide() {
@@ -135,8 +134,8 @@ final class PalettePanel: NSPanel {
             do {
                 try await model.restore(item, isCurrent: { self.interactionID == request })
                 let changeCount = NSPasteboard.general.changeCount
-                // Do not call hide(): it cancels pending delivery for Escape/close.
-                panel.orderOut(nil)
+                // Keep the palette visible while returning keyboard focus to the destination.
+                panel.resignKey()
                 guard target.activate(options: []) else { throw PasteDelivery.Failure.destinationUnavailable }
                 try await PasteDelivery.deliver(
                     isCurrent: { self.interactionID == request },
@@ -155,8 +154,16 @@ final class PalettePanel: NSPanel {
                 // Escape or a new palette session cancels an in-flight image/paste.
             } catch {
                 guard interactionID == request else { return }
-                model.status = "Automatic paste didn’t complete. Check the destination field, then use Copy ↩ and paste manually."
-                show()
+                switch error {
+                case PasteDelivery.Failure.clipboardChanged:
+                    model.status = "Paste cancelled because the clipboard changed. Click the item to try again."
+                case PasteDelivery.Failure.destinationUnavailable:
+                    model.status = "The destination app is unavailable. Focus another field, then try again."
+                case PasteDelivery.Failure.timedOut:
+                    model.status = "Paste couldn’t confirm focus in \(target.localizedName ?? "the destination"). Focus the field and try again, or double-click to copy."
+                default:
+                    model.status = "Paste failed: \(error.localizedDescription)"
+                }
             }
         }
     }

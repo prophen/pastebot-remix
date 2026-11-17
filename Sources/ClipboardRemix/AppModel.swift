@@ -46,14 +46,15 @@ import ClipboardCore
         let index = rows.firstIndex { $0.id == selectedID } ?? 0
         selectedID = rows[min(max(index + delta, 0), rows.count - 1)].id
     }
-    func copy(_ item: HistoryItem? = nil) {
+    func copy(_ item: HistoryItem? = nil, dismissAfterCopy: Bool = true) {
         guard !isCopying, let item = item ?? selected else { return }
         isCopying = true
         Task {
             defer { isCopying = false }
             do {
                 try await restore(item)
-                dismiss?()
+                status = "Copied to clipboard."
+                if dismissAfterCopy { dismiss?() }
             } catch { status = "Copy failed: \(error.localizedDescription)" }
         }
     }

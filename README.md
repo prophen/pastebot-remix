@@ -20,6 +20,7 @@ The default build is ad-hoc signed for local development. For Developer ID signi
 - Type to search text; choose **All / Text / Images**. Images have time and dimension labels, with no OCR or filename search.
 - The footer names the paste destination (for example, **Paste → TextEdit**). While the palette stays open, focus another app to change the destination. You can also focus a different field or window within the same app; the next row click uses that field.
 - **Click a history row** to paste it into the most recently focused field outside Clipboard Remix. On first use, enable Clipboard Remix in **System Settings → Privacy & Security → Accessibility**, then focus your destination and reopen the palette. No paste is queued while permission is missing.
+- Single-click a row to paste and keep the palette open. Double-click a row to copy only and keep it open; single-click paste waits briefly to distinguish a double-click.
 - Use **Up/Down** to preview without pasting, or right-click a row and choose **Preview**.
 - For copy-only behavior, use **Return** to copy and dismiss, or **Command-1…9** to copy one of the first nine filtered results. Then paste normally with **Command-V** in your destination app.
 - **Escape** closes the palette without replacing the clipboard.

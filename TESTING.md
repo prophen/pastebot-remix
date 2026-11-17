@@ -71,3 +71,10 @@ The test document created in TextEdit and the two demonstration history entries 
 - The destination's focused field is read at click time, so changing fields or windows within the same app is supported. Once a paste starts, its app/field snapshot stays fixed and the existing delivery guards still apply.
 - All eight automated check groups pass. The user confirmed that leaving the palette open, focusing a different location, and clicking a history item pastes into the new location.
 - Apple accepted notarization submission `54f6f1ba-75a4-40ec-a1aa-2b5314d1c3c7`; the 0.2.1 app is stapled and Gatekeeper-accepted.
+
+## Version 0.2.2 — persistent palette and double-click copy
+
+- Single-click pastes while leaving the palette visible; it releases keyboard focus to the destination. The palette is now a nonactivating panel so opening it preserves the destination app's activation.
+- Exclusive double/single tap recognition prevents a double-click from also triggering paste. Double-click restores text or image to the clipboard and keeps the palette open. Return and Command-1…9 retain copy-and-dismiss behavior.
+- All eight automated check groups pass and the release build succeeds. These checks cover clipboard round trips and delivery guards, not native mouse gestures or focus behavior. Repeated paste with the palette open, double-click copy without pasting, and search/shortcut behavior require manual verification on this build.
+- Paste failures now distinguish clipboard changes, unavailable destination, and focus timeout. The user's reported failure is not yet reproduced.

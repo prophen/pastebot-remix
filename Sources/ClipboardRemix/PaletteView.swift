@@ -74,7 +74,6 @@ struct PaletteView: View {
                         if index == 0 || !Calendar.current.isDate(item.created, inSameDayAs: rows[index - 1].created) {
                             Text(dayLabel(item.created)).font(.caption.weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 8).padding(.top, 10)
                         }
-                        Button { model.selectedID = item.id; model.pasteItem?(item) } label: {
                             HStack(spacing: 9) {
                                 if item.kind == .image {
                                     ClipImage(item: item, store: model.store, thumbnail: true).frame(width: 42, height: 34)
@@ -91,9 +90,23 @@ struct PaletteView: View {
                                 .background(model.selectedID == item.id ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
                                 .overlay(RoundedRectangle(cornerRadius: 7).stroke(model.selectedID == item.id ? Color.accentColor : .clear, lineWidth: 1))
                                 .contentShape(Rectangle())
-                        }.buttonStyle(.plain).id(item.id)
+                        .gesture(
+                            TapGesture(count: 2).exclusively(before: TapGesture(count: 1))
+                                .onEnded { gesture in
+                                    guard !model.isCopying else { return }
+                                    model.selectedID = item.id
+                                    switch gesture {
+                                    case .first: model.copy(item, dismissAfterCopy: false)
+                                    case .second: model.pasteItem?(item)
+                                    }
+                                }
+                        )
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAction { model.selectedID = item.id; model.pasteItem?(item) }
+                        .accessibilityAction(named: Text("Copy Only")) { model.copy(item, dismissAfterCopy: false) }
+                        .id(item.id)
                         .disabled(model.isCopying)
-                        .help("Click to paste into the last focused app. Use arrow keys to preview.")
+                        .help("Click to paste. Double-click to copy only. The palette stays open. Use arrow keys to preview.")
                         .contextMenu {
                             Button("Preview") { model.selectedID = item.id }
                             Button("Copy Only") { model.copy(item) }
