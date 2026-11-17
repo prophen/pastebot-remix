@@ -62,5 +62,5 @@ The test document created in TextEdit and the two demonstration history entries 
 - The user confirmed a text row pasted into the focused TextEdit document without pressing Command-V.
 - Native automation was invoking the shortcut with T3 as the actual foreground app. These automated TextEdit attempts are not counted as successful destination tests. The destination is now named in the footer and remains fixed for the entire palette session; reopen notifications while visible cannot replace it.
 - Arrow keys preview; row context menus offer Preview and Copy Only. Return, Command-1…9, and the Copy button remain copy-only.
-- Text and PNG/TIFF use the same restore path; live image click-to-paste verification is pending.
+- The user also confirmed that clicking an image row pasted the image into TextEdit. Text and PNG/TIFF use the same restore path.
 - Apple accepted corrected build submission `86b4229b-afcf-4b3d-b933-047b545b108c`. The final `Clipboard-Remix-0.2.0-arm64.zip` was extracted and passed signature, stapled-ticket, and Gatekeeper verification. The earlier intermediate 0.2.0 archive was withdrawn during testing.
