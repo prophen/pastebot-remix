@@ -62,13 +62,21 @@ final class PalettePanel: NSPanel {
     }
     func toggle() { if panel.isVisible { hide() } else { show() } }
     func show() {
-        interactionID = UUID()
-        if let app = NSWorkspace.shared.frontmostApplication,
-           app.processIdentifier != ProcessInfo.processInfo.processIdentifier {
-            previousApp = app
-            previousField = AXIsProcessTrusted() ? focusedField(in: app) : nil
+        // Reopen/activation notifications while visible must not retarget a click.
+        // The destination belongs to this opening of the palette, not to whatever
+        // application happens to become active while inspecting it.
+        if !panel.isVisible {
+            interactionID = UUID()
+            previousApp = nil
+            previousField = nil
+            if let app = NSWorkspace.shared.frontmostApplication,
+               app.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+                previousApp = app
+                previousField = AXIsProcessTrusted() ? focusedField(in: app) : nil
+            }
+            model.pasteDestinationName = previousApp?.localizedName
+            panel.center()
         }
-        if !panel.isVisible { panel.center() }
         model.openGeneration += 1
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)

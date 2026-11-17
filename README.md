@@ -18,6 +18,7 @@ The default build is ad-hoc signed for local development. For Developer ID signi
 - Capture starts when the app launches. It does not import whatever was on the clipboard before launch.
 - Click the clipboard menu-bar icon or press **Option-Command-V** to open the palette.
 - Type to search text; choose **All / Text / Images**. Images have time and dimension labels, with no OCR or filename search.
+- The footer names the paste destination (for example, **Paste → TextEdit**). It stays fixed while the palette is open; close and reopen the palette from another app to change it.
 - **Click a history row** to paste it into the field that was focused before opening the palette. On first use, enable Clipboard Remix in **System Settings → Privacy & Security → Accessibility**, then focus your destination and reopen the palette. No paste is queued while permission is missing.
 - Use **Up/Down** to preview without pasting, or right-click a row and choose **Preview**.
 - For copy-only behavior, use **Return** to copy and dismiss, or **Command-1…9** to copy one of the first nine filtered results. Then paste normally with **Command-V** in your destination app.

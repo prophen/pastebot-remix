@@ -11,6 +11,7 @@ import ClipboardCore
     @Published var status: String?
     @Published var isCopying = false
     @Published var openGeneration = 0
+    @Published var pasteDestinationName: String?
     let store: HistoryStore
     let monitor: ClipboardMonitor
     var dismiss: (() -> Void)?

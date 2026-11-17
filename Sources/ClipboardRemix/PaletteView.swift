@@ -48,7 +48,7 @@ struct PaletteView: View {
                 Text(model.paused ? "Capture paused" : "\(model.items.count) saved")
                     .foregroundStyle(model.paused ? .orange : .secondary)
                 Spacer()
-                Text("Click to paste   ↑↓ preview   ⌘1–9 copy   esc close").foregroundStyle(.secondary)
+                Text(model.pasteDestinationName.map { "Paste → \($0)   ↑↓ preview   esc close" } ?? "Focus a destination first   ↑↓ preview").foregroundStyle(.secondary)
                 Button(model.isCopying ? "Copying…" : "Copy ↩") { model.copy() }
                     .buttonStyle(.borderedProminent).disabled(model.selected == nil || model.isCopying)
             }.font(.caption).padding(12)
