@@ -18,8 +18,8 @@ The default build is ad-hoc signed for local development. For Developer ID signi
 - Capture starts when the app launches. It does not import whatever was on the clipboard before launch.
 - Click the clipboard menu-bar icon or press **Option-Command-V** to open the palette.
 - Type to search text; choose **All / Text / Images**. Images have time and dimension labels, with no OCR or filename search.
-- The footer names the paste destination (for example, **Paste → TextEdit**). It stays fixed while the palette is open; close and reopen the palette from another app to change it.
-- **Click a history row** to paste it into the field that was focused before opening the palette. On first use, enable Clipboard Remix in **System Settings → Privacy & Security → Accessibility**, then focus your destination and reopen the palette. No paste is queued while permission is missing.
+- The footer names the paste destination (for example, **Paste → TextEdit**). While the palette stays open, focus another app to change the destination. You can also focus a different field or window within the same app; the next row click uses that field.
+- **Click a history row** to paste it into the most recently focused field outside Clipboard Remix. On first use, enable Clipboard Remix in **System Settings → Privacy & Security → Accessibility**, then focus your destination and reopen the palette. No paste is queued while permission is missing.
 - Use **Up/Down** to preview without pasting, or right-click a row and choose **Preview**.
 - For copy-only behavior, use **Return** to copy and dismiss, or **Command-1…9** to copy one of the first nine filtered results. Then paste normally with **Command-V** in your destination app.
 - **Escape** closes the palette without replacing the clipboard.
@@ -47,4 +47,4 @@ The standalone test executable runs without XCTest or Xcode. Tests use temporary
 
 See [TESTING.md](TESTING.md) for observed results and remaining manual checks.
 
-Click-to-paste sends the normal Command-V action to the previous app after restoring its focused field. It supports text and images wherever that destination accepts normal pasting. If focus cannot be verified, use Copy and paste manually. The app does not press Return or submit the destination form.
+Click-to-paste sends the normal Command-V action to the last focused app after restoring its focused field. The destination is locked when you click, so later focus changes cannot redirect an in-flight paste. It supports text and images wherever that destination accepts normal pasting. If focus cannot be verified, use Copy and paste manually. The app does not press Return or submit the destination form.

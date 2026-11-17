@@ -12,11 +12,11 @@ final class PalettePanel: NSPanel {
     let panel: PalettePanel
     private let model: AppModel
     private var previousApp: NSRunningApplication?
-    private var previousField: AXUIElement?
     private var interactionID = UUID()
     private var keyMonitor: Any?
     private var menuTracking = false
     private var menuObservers: [NSObjectProtocol] = []
+    private var activationObserver: NSObjectProtocol?
     init(model: AppModel) {
         self.model = model
         panel = PalettePanel(contentRect: NSRect(x: 0, y: 0, width: 800, height: 530), styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
@@ -40,6 +40,15 @@ final class PalettePanel: NSPanel {
         menuObservers.append(NotificationCenter.default.addObserver(forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.menuTracking = false }
         })
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                guard let self, self.panel.isVisible, !self.model.isCopying,
+                      let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+                self.rememberDestination(app)
+            }
+        }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.panel.isKeyWindow, !self.menuTracking, NSApp.modalWindow == nil else { return event }
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -62,19 +71,11 @@ final class PalettePanel: NSPanel {
     }
     func toggle() { if panel.isVisible { hide() } else { show() } }
     func show() {
-        // Reopen/activation notifications while visible must not retarget a click.
-        // The destination belongs to this opening of the palette, not to whatever
-        // application happens to become active while inspecting it.
         if !panel.isVisible {
             interactionID = UUID()
             previousApp = nil
-            previousField = nil
-            if let app = NSWorkspace.shared.frontmostApplication,
-               app.processIdentifier != ProcessInfo.processInfo.processIdentifier {
-                previousApp = app
-                previousField = AXIsProcessTrusted() ? focusedField(in: app) : nil
-            }
-            model.pasteDestinationName = previousApp?.localizedName
+            model.pasteDestinationName = nil
+            if let app = NSWorkspace.shared.frontmostApplication { rememberDestination(app) }
             panel.center()
         }
         model.openGeneration += 1
@@ -87,6 +88,12 @@ final class PalettePanel: NSPanel {
         panel.orderOut(nil)
         if restore { previousApp?.activate(options: []) }
     }
+    private func rememberDestination(_ app: NSRunningApplication) {
+        guard app.processIdentifier != ProcessInfo.processInfo.processIdentifier,
+              !app.isTerminated else { return }
+        previousApp = app
+        model.pasteDestinationName = app.localizedName
+    }
     private func focusedField(in app: NSRunningApplication) -> AXUIElement? {
         let element = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(element, 0.2)
@@ -98,7 +105,7 @@ final class PalettePanel: NSPanel {
     private func paste(_ item: HistoryItem) {
         guard !model.isCopying else { return }
         guard let target = previousApp, !target.isTerminated else {
-            model.status = "Focus a field in another app, then open Clipboard Remix and click the item again."
+            model.status = "Focus a field in another app, then click the item again."
             return
         }
         guard AXIsProcessTrusted() else {
@@ -106,8 +113,11 @@ final class PalettePanel: NSPanel {
             AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
             return
         }
-        guard let field = previousField else {
-            model.status = "Focus your destination field and reopen the palette before pasting. You can also use Copy ↩ and paste manually."
+        // Read the most recently focused field at click time, including changes
+        // between fields/windows in the same app. The request below captures it
+        // by value, so later activation events cannot redirect a pending paste.
+        guard let field = focusedField(in: target) else {
+            model.status = "Focus your destination field, then click the item again. You can also use Copy ↩ and paste manually."
             return
         }
         guard let source = CGEventSource(stateID: .privateState),

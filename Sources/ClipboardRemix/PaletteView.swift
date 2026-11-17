@@ -93,7 +93,7 @@ struct PaletteView: View {
                                 .contentShape(Rectangle())
                         }.buttonStyle(.plain).id(item.id)
                         .disabled(model.isCopying)
-                        .help("Click to paste into the previous app. Use arrow keys to preview.")
+                        .help("Click to paste into the last focused app. Use arrow keys to preview.")
                         .contextMenu {
                             Button("Preview") { model.selectedID = item.id }
                             Button("Copy Only") { model.copy(item) }
