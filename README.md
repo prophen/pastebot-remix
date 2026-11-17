@@ -48,4 +48,4 @@ The standalone test executable runs without XCTest or Xcode. Tests use temporary
 
 See [TESTING.md](TESTING.md) for observed results and remaining manual checks.
 
-Click-to-paste sends the normal Command-V action to the last focused app after restoring its focused field. The destination is locked when you click, so later focus changes cannot redirect an in-flight paste. It supports text and images wherever that destination accepts normal pasting. If focus cannot be verified, use Copy and paste manually. The app does not press Return or submit the destination form.
+Click-to-paste sends the normal Command-V action to the last focused app after restoring its focused field. The destination app is locked when you click. Its focused field is captured then if available, or after the app regains keyboard focus; the field must remain stable before Paste is sent. It supports text and images wherever that destination accepts normal pasting. If focus cannot be verified, use Copy and paste manually. The app does not press Return or submit the destination form.

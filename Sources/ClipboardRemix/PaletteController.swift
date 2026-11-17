@@ -92,6 +92,14 @@ final class PalettePanel: NSPanel {
               !app.isTerminated else { return }
         previousApp = app
         model.pasteDestinationName = app.localizedName
+        // Electron exposes its web fields only after accessibility is enabled.
+        // Native apps do not need this attribute.
+        if AXIsProcessTrusted(), let bundle = app.bundleURL,
+           FileManager.default.fileExists(atPath: bundle.appendingPathComponent("Contents/Frameworks/Electron Framework.framework").path) {
+            let element = AXUIElementCreateApplication(app.processIdentifier)
+            AXUIElementSetMessagingTimeout(element, 0.2)
+            AXUIElementSetAttributeValue(element, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+        }
     }
     private func focusedField(in app: NSRunningApplication) -> AXUIElement? {
         let element = AXUIElementCreateApplication(app.processIdentifier)
@@ -112,13 +120,10 @@ final class PalettePanel: NSPanel {
             AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
             return
         }
-        // Read the most recently focused field at click time, including changes
-        // between fields/windows in the same app. The request below captures it
-        // by value, so later activation events cannot redirect a pending paste.
-        guard let field = focusedField(in: target) else {
-            model.status = "Focus your destination field, then click the item again. You can also use Copy ↩ and paste manually."
-            return
-        }
+        // Some apps expose no focused element while the palette owns keyboard
+        // focus. Preserve an available snapshot, otherwise acquire it only after
+        // the locked destination regains focus; never send without a field.
+        var field = focusedField(in: target)
         guard let source = CGEventSource(stateID: .privateState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) else {
@@ -144,7 +149,9 @@ final class PalettePanel: NSPanel {
                     destinationReady: {
                         guard AXIsProcessTrusted(), target.isActive,
                               NSWorkspace.shared.frontmostApplication?.processIdentifier == target.processIdentifier,
-                              let focused = self.focusedField(in: target), CFEqual(field, focused) else { return false }
+                              let focused = self.focusedField(in: target) else { return false }
+                        if field == nil { field = focused }
+                        guard let field, CFEqual(field, focused) else { return false }
                         let modifiers = CGEventSource.flagsState(.combinedSessionState)
                         return modifiers.intersection([.maskCommand, .maskAlternate, .maskControl, .maskShift]).isEmpty
                     },

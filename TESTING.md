@@ -78,3 +78,9 @@ The test document created in TextEdit and the two demonstration history entries 
 - Exclusive double/single tap recognition prevents a double-click from also triggering paste. Double-click restores text or image to the clipboard and keeps the palette open. Return and Command-1…9 retain copy-and-dismiss behavior.
 - All eight automated check groups pass and the release build succeeds. These checks cover clipboard round trips and delivery guards, not native mouse gestures or focus behavior. Repeated paste with the palette open, double-click copy without pasting, and search/shortcut behavior require manual verification on this build.
 - Paste failures now distinguish clipboard changes, unavailable destination, and focus timeout. The user's reported failure is not yet reproduced.
+
+### Build 5 — Electron focus and approved app icon
+
+- The reported screenshot identified failure to read T3 Code's focused Accessibility element before activation. Electron destinations now receive the documented AXManualAccessibility opt-in. If a field is unavailable while the palette owns keyboard focus, delivery waits for the locked destination app to regain focus, then acquires a field and requires stable checks before sending. No paste is sent without a readable field.
+- Installed the approved icon in Resources/AppIcon.icns; the build copies it into Contents/Resources before signing and Info.plist declares AppIcon.
+- All eight automated check groups pass. Manual click-to-paste confirmation in T3 Code is still pending.
