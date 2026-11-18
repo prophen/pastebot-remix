@@ -4,12 +4,17 @@ import ClipboardCore
 struct PaletteView: View {
     @ObservedObject var model: AppModel
     @FocusState private var searchFocused: Bool
+    @AppStorage("paletteTextSize") private var textSize = "large"
+    private var textScale: CGFloat { textSize == "extraLarge" ? 1.5 : textSize == "standard" ? 1 : 1.25 }
+    private func font(_ points: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
+        .system(size: points * textScale, weight: weight, design: design)
+    }
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField("Search copied text…", text: $model.query)
-                    .textFieldStyle(.plain).font(.title3).focused($searchFocused)
+                    .textFieldStyle(.plain).font(font(15)).focused($searchFocused)
                     .accessibilityLabel("Search clipboard history")
                 Picker("Filter", selection: $model.filter) {
                     ForEach(ClipFilter.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -17,22 +22,30 @@ struct PaletteView: View {
             }.padding(16)
             Divider()
             HStack(spacing: 0) {
-                history.frame(width: 290)
+                history.frame(width: 290 + 80 * (textScale - 1))
                 Divider()
                 preview.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             Divider()
             if let status = model.status {
-                HStack { Text(status).font(.caption).foregroundStyle(.orange); Spacer(); Button("Dismiss") { model.status = nil } }
+                HStack { Text(status).font(font(11)).foregroundStyle(.orange); Spacer(); Button("Dismiss") { model.status = nil } }
                     .padding(.horizontal, 12).padding(.vertical, 6)
                 Divider()
             }
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+              HStack(spacing: 12) {
                 Menu {
                     if model.paused { Button("Resume Capture", action: model.resumeCapture) }
                     Button("Pause for 15 Minutes", action: model.pauseFor15Minutes)
                     Button("Pause Indefinitely", action: model.pauseIndefinitely)
                     LoginMenu(controller: model.login)
+                    Divider()
+                    Picker("Text Size", selection: $textSize) {
+                        Text("Standard (100%)").tag("standard")
+                        Text("Large (125%)").tag("large")
+                        Text("Extra Large (150%)").tag("extraLarge")
+                    }
+
                     Divider()
                     Button("Delete Selected", action: model.deleteSelected).disabled(model.selected == nil)
                     Button("Clear History…", action: model.clear)
@@ -43,7 +56,7 @@ struct PaletteView: View {
                     Button("Quit Clipboard Remix") { NSApp.terminate(nil) }
                 } label: {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 13))
+                        .font(font(13))
                         .padding(.trailing, 8)
                 }
                 .menuStyle(.borderlessButton)
@@ -52,17 +65,20 @@ struct PaletteView: View {
                 Text(model.paused ? model.pauseDescription : "\(model.items.count) saved")
                     .foregroundStyle(model.paused ? .orange : .secondary)
                 Spacer()
-                Text(model.pasteDestinationName.map { "Paste → \($0)   ↑↓ preview   esc close" } ?? "Focus a destination first   ↑↓ preview").foregroundStyle(.secondary)
                 Button(model.isCopying ? "Copying…" : "Copy ↩") { model.copy() }
                     .buttonStyle(.borderedProminent).disabled(model.selected == nil || model.isCopying)
-            }.font(.caption).padding(12)
+              }
+              Text(model.pasteDestinationName.map { "Paste → \($0)   ↑↓ preview   esc close" } ?? "Focus a destination first   ↑↓ preview")
+                .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }.font(font(11)).padding(12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .font(font(13))
         .background(.regularMaterial)
         .overlay(alignment: .topTrailing) {
             if let feedback = model.feedback {
                 Text(feedback)
-                    .font(.caption.weight(.medium))
+                    .font(font(11, weight: .medium))
                     .padding(.horizontal, 12).padding(.vertical, 7)
                     .background(.regularMaterial, in: Capsule())
                     .overlay(Capsule().stroke(.secondary.opacity(0.3)))
@@ -82,14 +98,14 @@ struct PaletteView: View {
                     let rows = model.visible
                     if rows.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(model.items.isEmpty ? "Your copies start here" : "No matches").font(.headline)
+                            Text(model.items.isEmpty ? "Your copies start here" : "No matches").font(font(13, weight: .semibold))
                             Text(model.items.isEmpty ? "Copy text or a screenshot while Clipboard Remix is running." : "Try another search or filter. Images aren't searched by their contents.")
                                 .foregroundStyle(.secondary)
                         }.padding(16)
                     }
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
                         if index == 0 || item.isPinned != rows[index - 1].isPinned || (!item.isPinned && !Calendar.current.isDate(item.created, inSameDayAs: rows[index - 1].created)) {
-                            Text(item.isPinned ? "Pinned" : dayLabel(item.created)).font(.caption.weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 8).padding(.top, 10)
+                            Text(item.isPinned ? "Pinned" : dayLabel(item.created)).font(font(11, weight: .semibold)).foregroundStyle(.secondary).padding(.horizontal, 8).padding(.top, 10)
                         }
                             HStack(spacing: 9) {
                                 if item.kind == .image {
@@ -98,12 +114,12 @@ struct PaletteView: View {
                                     Image(systemName: "text.alignleft").foregroundStyle(.secondary).frame(width: 42, height: 34)
                                 }
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(item.title).font(.system(size: 12)).lineLimit(2).multilineTextAlignment(.leading)
-                                    Text(item.created, style: .time).font(.caption2).foregroundStyle(.secondary)
+                                    Text(item.title).font(font(12)).lineLimit(2).multilineTextAlignment(.leading)
+                                    Text(item.created, style: .time).font(font(10)).foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 0)
                                 if item.isPinned { Image(systemName: "pin.fill").foregroundStyle(.secondary).accessibilityLabel("Pinned favorite") }
-                                if index < 9 { Text("⌘\(index + 1)").font(.caption2).foregroundStyle(.secondary) }
+                                if index < 9 { Text("⌘\(index + 1)").font(font(10)).foregroundStyle(.secondary) }
                             }.padding(8).frame(maxWidth: .infinity, alignment: .leading)
                                 .background(model.selectedID == item.id ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 7))
                                 .overlay(RoundedRectangle(cornerRadius: 7).stroke(model.selectedID == item.id ? Color.accentColor : .clear, lineWidth: 1))
@@ -140,7 +156,7 @@ struct PaletteView: View {
             VStack(alignment: .leading, spacing: 12) {
                 if let text = item.text {
                     ScrollView {
-                        Text(text).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                        Text(text).font(font(13, design: .monospaced)).textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .topLeading).padding(14)
                     }.background(.background.opacity(0.65), in: RoundedRectangle(cornerRadius: 8))
                 } else {
@@ -149,20 +165,20 @@ struct PaletteView: View {
                         .padding(12).background(Color.gray.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
                         .modifier(ImagePreviewDrag(item: item, store: model.store, onError: { model.status = $0 }))
                     Text("Drag the preview into a document or upload target")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(font(11)).foregroundStyle(.secondary)
                 }
                 HStack {
                     Text(item.kind == .image ? "\(item.width) × \(item.height)" : "Plain text")
                     Spacer()
                     Text(ByteCountFormatter.string(fromByteCount: Int64(item.bytes), countStyle: .file))
-                }.font(.caption).foregroundStyle(.secondary)
-                Text(item.created.formatted(date: .abbreviated, time: .standard)).font(.caption).foregroundStyle(.secondary)
+                }.font(font(11)).foregroundStyle(.secondary)
+                Text(item.created.formatted(date: .abbreviated, time: .standard)).font(font(11)).foregroundStyle(.secondary)
             }.padding(16).id(item.id)
         } else {
             VStack(spacing: 12) {
                 Image(systemName: "clipboard").font(.system(size: 38)).foregroundStyle(.tertiary)
                 Text("Select a copy to preview").foregroundStyle(.secondary)
-                Text("Copy it back, then paste with ⌘V.").font(.caption).foregroundStyle(.tertiary)
+                Text("Copy it back, then paste with ⌘V.").font(font(11)).foregroundStyle(.tertiary)
             }
         }
     }

@@ -84,3 +84,9 @@ The user reported that the app did not start after logout/login. The installed b
 After the build 10 smoke-pass report, the user supplied a Comet single-click paste failure showing “couldn’t confirm focus.” Build 11 requests Comet’s Chromium accessibility tree using AXEnhancedUserInterface (once per running browser after a successful request), reads the application role to activate native accessibility, and allows four seconds for Comet focus readiness because Chromium can debounce accessibility activation for two seconds. Electron retains AXManualAccessibility. Destination PID, stable field identity, clipboard-change and cancellation checks remain enforced.
 
 Automated coverage includes delayed focus readiness beyond the old one-second window. Actual Comet field-level text/image paste acceptance is pending manual retest; no automated paste into real chats is performed. The published 0.5.0 artifact is unchanged.
+
+### Larger text: v0.6.0 build 12
+
+Adds persistent gear-menu Text Size choices (100%, 125%, 150%), defaulting to 125%. History, text preview, search, metadata, and status text scale; image pixels are unchanged. The history column widens and footer controls use two lines to accommodate larger text. Native palette checks exercise all sizes at the 740 × 490 minimum and verify stored preferences. This build also includes the Comet accessibility fix from build 11. Manual Comet paste and text-size acceptance remain pending.
+
+Installing build 11 over the existing home Applications copy was blocked by macOS with Operation not permitted. The original signed build 10 was verified and reopened, with history untouched. Build 12 will require installation through Finder if the same protection remains.

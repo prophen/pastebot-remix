@@ -25,6 +25,10 @@ The app does not import clipboard content that was already present when it launc
 
 If macOS reports a damaged or unverified download, check the release’s signing/notarization status and download it again from the release page. Report the exact message rather than disabling Gatekeeper.
 
+## Text size (source builds 0.6.0 and later)
+
+Choose **gear → Text Size** for Standard (100%), Large (125%), or Extra Large (150%). Large is the default. The setting applies to history rows, text previews, search, and status text, and is remembered across launches. It does not magnify image contents.
+
 ## Find and reuse a clip
 
 Type in the search field to search text, and use **All / Text / Images** to filter results. Images have capture-time and dimension labels; image contents are not searchable.

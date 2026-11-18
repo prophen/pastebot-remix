@@ -73,6 +73,15 @@ let checkTemporaryDirectory = URL(fileURLWithPath: ProcessInfo.processInfo.envir
     newModel.status = "Test error remains visible"
     try await Task.sleep(for: .milliseconds(200))
     try check(restarted.panel.frame, minimumFrame, "pause, feedback and error layout")
+    for size in ["standard", "large", "extraLarge"] {
+        defaults.set(size, forKey: "paletteTextSize")
+        try await Task.sleep(for: .milliseconds(200))
+        restarted.panel.contentView?.layoutSubtreeIfNeeded()
+        try check(restarted.panel.frame, minimumFrame, "text size \(size) preserves minimum frame")
+        guard UserDefaults(suiteName: suite)!.string(forKey: "paletteTextSize") == size else {
+            throw HistoryError.message("Text size preference did not persist")
+        }
+    }
     newModel.resumeCapture()
     try await runTimingChecks()
 }

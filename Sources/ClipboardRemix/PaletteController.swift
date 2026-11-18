@@ -36,7 +36,7 @@ final class PalettePanel: NSPanel {
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         panel.minSize = NSSize(width: 740, height: 490)
-        let hostingView = NSHostingView(rootView: PaletteView(model: model))
+        let hostingView = NSHostingView(rootView: PaletteView(model: model).defaultAppStorage(defaults))
         // AppKit owns the window bounds. SwiftUI's default sizing options replace
         // minSize after layout, allowing sizes that restoreGeometry would expand.
         hostingView.sizingOptions = []
