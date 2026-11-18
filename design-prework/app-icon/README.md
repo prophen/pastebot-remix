@@ -31,7 +31,7 @@ At 16–32 px the icon reads as a blue tile with a warm photo and a white card. 
 
 ```sh
 python3 make_icon_svg.py
-B=/Volumes/Expansion/pastebot-remix-build/icon-design
+B="${CLIPBOARD_BUILD_ROOT:?Set CLIPBOARD_BUILD_ROOT to your artifact directory}/icon-design"
 swiftc -O -module-cache-path $B/modcache render_svg.swift -o $B/render
 $B/render clipboard-remix-icon.svg clipboard-remix-icon-1024.png 1024
 ```

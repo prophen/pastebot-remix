@@ -1,14 +1,10 @@
-> Second follow-up: issues #4–#7 add timed pause, brief success feedback, PNG dragging from the image preview, and exact deduplication. Their implementation and verification are tracked in TESTING.md.
+# Original MVP design plan (historical)
 
-> November 16 follow-up: issues #1–#3 add remembered palette geometry, opt-in login launch, and pinned text/image favorites. These supersede the original deferrals below. Issues #4–#7 remain backlog.
-
-> Scope update: click-to-paste was requested after the initial MVP. Clicking a row now pastes into the previous app with Accessibility permission; keyboard copy actions remain copy-only. The original plan below records the initial scope.
-
-# Clipboard history MVP
+This document records the initial implementation plan, not installation or current feature instructions. The app has since shipped local builds with all seven follow-up features. See [README.md](README.md) for current usage, [TESTING.md](TESTING.md) for verification, and [RELEASE.md](RELEASE.md) for distribution prerequisites. Statements below describe the original planning stage.
 
 ## Outcome
 
-A native Mac utility that remembers copied text and screenshots, survives restarts, and lets Nikema find and copy an earlier item back for normal Command-V pasting.
+A native Mac utility that remembers copied text and screenshots, survives restarts, and lets users find and copy an earlier item back for normal Command-V pasting.
 
 Design B from `design-prework/clipboard-history-sketches.html` is selected: one two-pane palette, history on the left and a large preview on the right. No application implementation exists yet.
 
@@ -37,7 +33,7 @@ Store an ID, kind, capture time, text or relative image path, thumbnail path, di
 
 ### 1. Prove capture and restore
 
-Create the smallest launchable Mac app. Capture one text item and one clipboard screenshot. Select each and restore it to the clipboard. Verify normal pasting in the actual text and image destinations Nikema uses. Prove panel focus/dismissal and shortcut behavior early.
+Create the smallest launchable Mac app. Capture one text item and one clipboard screenshot. Select each and restore it to the clipboard. Verify normal pasting in the actual text and image destinations people use. Prove panel focus/dismissal and shortcut behavior early.
 
 Exit: copy text, copy a screenshot, retrieve both, and paste them successfully. Do this before visual polish or full history storage.
 
