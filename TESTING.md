@@ -62,7 +62,7 @@ The [verification history](docs/VERIFICATION-HISTORY.md) preserves per-build fin
 - Build artifacts and isolated fixtures remain on Expansion; distributed runtime storage does not depend on that volume.
 - Apple accepted notarization. The final ZIP checksum passed; a fresh extraction passed strict signature verification, stapled-ticket validation, and Gatekeeper assessment (Notarized Developer ID).
 - Installed the extracted archive into an empty ~/Applications destination and confirmed build 10 running there on macOS 26.6.2, Apple Silicon. Read-only diagnostics confirmed supported login location and account-relative history/export paths. Real history was not cleared.
-- Existing Launch at Login registration was left unchanged. Startup after relocation, browser-download quarantine behavior, another Mac, a separate macOS user account, and minimum-OS coverage remain unverified. The prior manual interaction results above apply to their recorded builds; this packaging pass did not repeat field-level paste/drag checks.
+- Existing Launch at Login registration was left unchanged. Startup after relocation subsequently passed after manual re-registration (see follow-up below). Browser-download quarantine behavior, another Mac, a separate macOS user account, and minimum-OS coverage remain unverified. The prior manual interaction results above apply to their recorded builds; this packaging pass did not repeat field-level paste/drag checks.
 
 ## Report a bug
 
@@ -77,4 +77,4 @@ Use a benign example. Do not attach your clipboard database, private clipboard c
 
 ### Logout/login follow-up for build 10
 
-The user reported that the app did not start after logout/login. The installed bundle remained in ~/Applications (not /Applications). Follow-up diagnostics reported SMAppService status 3 (notFound), and a filtered background-task registry inspection found no Clipboard Remix entry. The cause of the missing registration is not established. The app was reopened for manual re-registration; startup after a subsequent login remains pending. Treat login-session acceptance as failed until retested.
+The user reported that the app did not start after logout/login. The installed bundle remained in ~/Applications (not /Applications). Follow-up diagnostics reported SMAppService status 3 (notFound), and a filtered background-task registry inspection found no Clipboard Remix entry. The cause of the missing registration is not established. The app was reopened for manual re-registration. The user enabled Launch at Login from the installed copy, confirmed On, then confirmed the app started automatically after another logout/login. Login-session startup therefore passed after explicit re-registration on this Mac. Automatic registration migration when moving an older copy is not established.
