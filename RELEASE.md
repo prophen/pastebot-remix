@@ -159,4 +159,4 @@ Upload only the final application ZIP and checksum as application assets. Keep c
 
 Version 0.5.0 build 10 is the first portable prerelease candidate and has passed signing, Apple notarization, final-archive verification, and installation/launch on the development Mac. The existing maintainer machine already has a Developer ID identity and the `clipboard-remix-notary` profile configured; other maintainers need their own credentials. Prior versions’ notarization tickets do not cover this candidate.
 
-See [TESTING.md](TESTING.md) and the candidate’s release-directory receipts for the verification outcome. The GitHub draft must remain unpublished until its assets and notes are reviewed.
+See [TESTING.md](TESTING.md) and the candidate’s release-directory receipts for the verification outcome. Version 0.5.0 was published as a prerelease after asset review and manual acceptance. For future releases, keep the GitHub draft unpublished until its assets and notes are reviewed and publication is approved.

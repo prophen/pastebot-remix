@@ -6,7 +6,7 @@ A native Mac clipboard manager for copied text and screenshots. Find an earlier 
 
 - Apple Silicon Mac. Current builds target macOS 14 or later; the minimum supported OS still needs release testing.
 - Accessibility permission is required for click-to-paste. Copying a clip and pasting it yourself does not require that permission.
-- Current source version: **0.5.0**, prepared as an Apple Silicon prerelease. See the release’s notes for signing/notarization status and the scope of verification.
+- Available download: [**0.5.0 prerelease**](https://github.com/prophen/pastebot-remix/releases/tag/v0.5.0), signed and Apple-notarized for Apple Silicon. See the release notes for the scope of verification.
 
 Check [GitHub Releases](https://github.com/prophen/pastebot-remix/releases) for published downloads and their release-specific requirements. Download an application ZIP from **Assets**, not GitHub’s automatically generated source-code archive. If no suitable application asset is available, see [Building from source](BUILDING.md).
 
