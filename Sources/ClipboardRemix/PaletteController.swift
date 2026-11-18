@@ -15,6 +15,7 @@ final class PalettePanel: NSPanel {
     private var previousApp: NSRunningApplication?
     private var enhancedAccessibilityApps: [NSRunningApplication] = []
     private var interactionID = UUID()
+    private var imageDragInteractionID: UUID?
     private var keyMonitor: Any?
     private var menuTracking = false
     private var menuObservers: [NSObjectProtocol] = []
@@ -54,6 +55,11 @@ final class PalettePanel: NSPanel {
         }
         model.dismiss = { [weak self] in self?.hide() }
         model.pasteItem = { [weak self] item in self?.paste(item) }
+        model.imageDragBegan = { [weak self] in
+            guard let self else { return }
+            self.imageDragInteractionID = self.interactionID
+        }
+        model.imageDragEnded = { [weak self] accepted in self?.finishImageDrag(accepted: accepted) }
         menuObservers.append(NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.menuTracking = true }
         })
@@ -70,7 +76,7 @@ final class PalettePanel: NSPanel {
             }
         }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, self.panel.isKeyWindow, !self.menuTracking, NSApp.modalWindow == nil else { return event }
+            guard let self, self.panel.isKeyWindow, self.imageDragInteractionID == nil, !self.menuTracking, NSApp.modalWindow == nil else { return event }
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             if modifiers.contains(.command), !modifiers.contains(.option), !modifiers.contains(.control) {
                 if let value = Int(event.charactersIgnoringModifiers ?? ""), (1...9).contains(value) {
@@ -89,7 +95,21 @@ final class PalettePanel: NSPanel {
             }
         }
     }
-    func toggle() { if panel.isVisible { hide() } else { show() } }
+    // A visible palette can be inactive after a drop or paste. Returning to it
+    // should focus it; only toggling the already-focused palette dismisses it.
+    func toggle() { if panel.isVisible && panel.isKeyWindow { hide() } else { show() } }
+    private func finishImageDrag(accepted: Bool) {
+        let request = imageDragInteractionID
+        imageDragInteractionID = nil
+        guard request == interactionID, panel.isVisible else { return }
+        if accepted {
+            if let app = NSWorkspace.shared.frontmostApplication { rememberDestination(app) }
+            // Leave keyboard focus with the receiving app. Ordering a
+            // nonactivating panel forward does not activate Clipboard Remix.
+            panel.resignKey()
+        }
+        panel.orderFrontRegardless()
+    }
     func show() {
         if !panel.isVisible {
             interactionID = UUID()

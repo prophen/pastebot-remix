@@ -21,6 +21,8 @@ import ClipboardCore
     let monitor: ClipboardMonitor
     var dismiss: (() -> Void)?
     var pasteItem: ((HistoryItem) -> Void)?
+    var imageDragBegan: (() -> Void)?
+    var imageDragEnded: ((Bool) -> Void)?
     var visible: [HistoryItem] { HistoryItem.matching(items, query: query, filter: filter) }
     var selected: HistoryItem? { visible.first { $0.id == selectedID } }
     private var pending = 0

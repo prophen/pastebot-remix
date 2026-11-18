@@ -163,7 +163,9 @@ struct PaletteView: View {
                     ClipImage(item: item, store: model.store, thumbnail: false)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .padding(12).background(Color.gray.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-                        .modifier(ImagePreviewDrag(item: item, store: model.store, onError: { model.status = $0 }))
+                        .modifier(ImagePreviewDrag(item: item, store: model.store, onError: { model.status = $0 },
+                                                   onBegan: { model.imageDragBegan?() },
+                                                   onEnded: { model.imageDragEnded?($0) }))
                     Text("Drag the preview into a document or upload target")
                         .font(font(11)).foregroundStyle(.secondary)
                 }

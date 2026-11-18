@@ -90,3 +90,9 @@ Automated coverage includes delayed focus readiness beyond the old one-second wi
 Adds persistent gear-menu Text Size choices (100%, 125%, 150%), defaulting to 125%. History, text preview, search, metadata, and status text scale; image pixels are unchanged. The history column widens and footer controls use two lines to accommodate larger text. Native palette checks exercise all sizes at the 740 × 490 minimum and verify stored preferences. This build also includes the Comet accessibility fix from build 11. Manual Comet paste and text-size acceptance remain pending.
 
 Installing build 11 over the existing home Applications copy was blocked by macOS with Operation not permitted. The original signed build 10 was verified and reopened, with history untouched. Build 12 will require installation through Finder if the same protection remains.
+
+### Returning after image drag: v0.6.0 build 13
+
+The user reported that returning after an image drag closed the palette. The shortcut/menu toggle now raises a visible inactive palette; it closes only an already-focused palette. Native drag lifecycle callbacks keep the palette ordered forward without taking keyboard focus from the receiving app, refresh the destination from the active external app on accepted drops, and let AppKit handle drag cancellation without the palette intercepting Escape. A late drag completion cannot reopen an explicitly dismissed palette.
+
+Native checks cover returning to an inactive visible palette, drag cancellation, and completion after explicit dismissal. Manual cross-app drag/focus acceptance remains pending, alongside Comet click-to-paste.

@@ -82,6 +82,18 @@ let checkTemporaryDirectory = URL(fileURLWithPath: ProcessInfo.processInfo.envir
             throw HistoryError.message("Text size preference did not persist")
         }
     }
+    // A palette left visible but inactive after a drop must be raised by the
+    // shortcut/menu toggle, rather than mistaken for a request to close it.
+    restarted.panel.resignKey()
+    restarted.toggle()
+    guard restarted.panel.isVisible else { throw HistoryError.message("Returning to inactive palette closed it") }
+    newModel.imageDragBegan?()
+    newModel.imageDragEnded?(false)
+    guard restarted.panel.isVisible else { throw HistoryError.message("Cancelled drag closed palette") }
+    newModel.imageDragBegan?()
+    restarted.hide()
+    newModel.imageDragEnded?(true)
+    guard !restarted.panel.isVisible else { throw HistoryError.message("Late drag completion reopened dismissed palette") }
     newModel.resumeCapture()
     try await runTimingChecks()
 }
