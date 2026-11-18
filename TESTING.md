@@ -60,7 +60,9 @@ The [verification history](docs/VERIFICATION-HISTORY.md) preserves per-build fin
 - All 14 core groups and native palette/model checks pass. New tests use an alternate home with spaces and confirm login eligibility only in standard Applications locations, plus first-run/repeated exports in per-user Application Support.
 - Installation helper checks verify Developer ID signing and an optional publisher team, accept standard destinations, and reject invalid destinations, mismatched signatures, and existing apps without replacement.
 - Build artifacts and isolated fixtures remain on Expansion; distributed runtime storage does not depend on that volume.
-- Same-Mac archive/signature/notarization/install verification is being recorded for this candidate. Another Mac, a separate macOS user account, minimum-OS coverage, and a real logout/login session are not claimed.
+- Apple accepted notarization. The final ZIP checksum passed; a fresh extraction passed strict signature verification, stapled-ticket validation, and Gatekeeper assessment (Notarized Developer ID).
+- Installed the extracted archive into an empty ~/Applications destination and confirmed build 10 running there on macOS 26.6.2, Apple Silicon. Read-only diagnostics confirmed supported login location and account-relative history/export paths. Real history was not cleared.
+- Existing Launch at Login registration was left unchanged. Startup after relocation, browser-download quarantine behavior, another Mac, a separate macOS user account, and minimum-OS coverage remain unverified. The prior manual interaction results above apply to their recorded builds; this packaging pass did not repeat field-level paste/drag checks.
 
 ## Report a bug
 
