@@ -74,3 +74,7 @@ Open an [issue](https://github.com/prophen/pastebot-remix/issues) with:
 - For window failures: display arrangement and whether the change happened on close/reopen, relaunch, or display disconnection.
 
 Use a benign example. Do not attach your clipboard database, private clipboard contents, signing credentials, or notarization secrets.
+
+### Logout/login follow-up for build 10
+
+The user reported that the app did not start after logout/login. The installed bundle remained in ~/Applications (not /Applications). Follow-up diagnostics reported SMAppService status 3 (notFound), and a filtered background-task registry inspection found no Clipboard Remix entry. The cause of the missing registration is not established. The app was reopened for manual re-registration; startup after a subsequent login remains pending. Treat login-session acceptance as failed until retested.
