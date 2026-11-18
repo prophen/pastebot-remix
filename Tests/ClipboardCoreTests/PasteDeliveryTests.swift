@@ -2,10 +2,13 @@ import ClipboardCore
 
 @MainActor final class PasteDeliveryTests {
     func testWaitsForStableFocus() async throws {
-        var ticks = 0, sends = 0
-        try await PasteDelivery.deliver(isCurrent: { true }, destinationExists: { true }, clipboardUnchanged: { true }, destinationReady: { ticks >= 2 }, send: { sends += 1 }, wait: { ticks += 1 })
-        expectEqual(sends, 1)
-        expectEqual(ticks, 4)
+        // Chromium may expose web focus only after a two-second AX startup.
+        for readyAt in [2, 40] {
+            var ticks = 0, sends = 0
+            try await PasteDelivery.deliver(isCurrent: { true }, destinationExists: { true }, clipboardUnchanged: { true }, destinationReady: { ticks >= readyAt }, send: { sends += 1 }, wait: { ticks += 1 }, attempts: 80)
+            expectEqual(sends, 1)
+            expectEqual(ticks, readyAt + 2)
+        }
     }
     func testNeverSendsAfterCancellationOrClipboardChange() async throws {
         for reason in [PasteDelivery.Failure.cancelled, .destinationUnavailable, .clipboardChanged] {

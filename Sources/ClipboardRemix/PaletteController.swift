@@ -13,6 +13,7 @@ final class PalettePanel: NSPanel {
     private let model: AppModel
     private let defaults: UserDefaults
     private var previousApp: NSRunningApplication?
+    private var enhancedAccessibilityApps: [NSRunningApplication] = []
     private var interactionID = UUID()
     private var keyMonitor: Any?
     private var menuTracking = false
@@ -112,13 +113,30 @@ final class PalettePanel: NSPanel {
               !app.isTerminated else { return }
         previousApp = app
         model.pasteDestinationName = app.localizedName
-        // Electron exposes its web fields only after accessibility is enabled.
-        // Native apps do not need this attribute.
-        if AXIsProcessTrusted(), let bundle = app.bundleURL,
-           FileManager.default.fileExists(atPath: bundle.appendingPathComponent("Contents/Frameworks/Electron Framework.framework").path) {
-            let element = AXUIElementCreateApplication(app.processIdentifier)
-            AXUIElementSetMessagingTimeout(element, 0.2)
+        prepareAccessibility(in: app)
+    }
+    private func isComet(_ app: NSRunningApplication) -> Bool {
+        guard let bundle = app.bundleURL else { return false }
+        return FileManager.default.fileExists(atPath: bundle.appendingPathComponent("Contents/Frameworks/Comet Framework.framework").path)
+    }
+    private func prepareAccessibility(in app: NSRunningApplication) {
+        guard AXIsProcessTrusted(), let bundle = app.bundleURL else { return }
+        let element = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(element, 0.2)
+        // Chromium activates its native accessibility tree when queried for its
+        // application role. This reads no field contents.
+        var role: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+        if FileManager.default.fileExists(atPath: bundle.appendingPathComponent("Contents/Frameworks/Electron Framework.framework").path) {
             AXUIElementSetAttributeValue(element, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+        }
+        enhancedAccessibilityApps.removeAll { $0.isTerminated }
+        if isComet(app), !enhancedAccessibilityApps.contains(where: { $0.processIdentifier == app.processIdentifier }) {
+            // Comet uses Chromium rather than Electron. Chromium debounces this
+            // request for two seconds, so do not keep resetting it on activation.
+            if AXUIElementSetAttributeValue(element, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue) == .success {
+                enhancedAccessibilityApps.append(app)
+            }
         }
     }
     private func focusedField(in app: NSRunningApplication) -> AXUIElement? {
@@ -143,6 +161,7 @@ final class PalettePanel: NSPanel {
         // Some apps expose no focused element while the palette owns keyboard
         // focus. Preserve an available snapshot, otherwise acquire it only after
         // the locked destination regains focus; never send without a field.
+        prepareAccessibility(in: target)
         var field = focusedField(in: target)
         guard let source = CGEventSource(stateID: .privateState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true),
@@ -174,7 +193,8 @@ final class PalettePanel: NSPanel {
                         let modifiers = CGEventSource.flagsState(.combinedSessionState)
                         return modifiers.intersection([.maskCommand, .maskAlternate, .maskControl, .maskShift]).isEmpty
                     },
-                    send: { down.postToPid(target.processIdentifier); up.postToPid(target.processIdentifier) }
+                    send: { down.postToPid(target.processIdentifier); up.postToPid(target.processIdentifier) },
+                    attempts: self.isComet(target) ? 80 : 20
                 )
                 model.showFeedback("Paste sent to \(target.localizedName ?? "destination")")
             } catch PasteDelivery.Failure.cancelled {

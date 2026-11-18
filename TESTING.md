@@ -78,3 +78,9 @@ Use a benign example. Do not attach your clipboard database, private clipboard c
 ### Logout/login follow-up for build 10
 
 The user reported that the app did not start after logout/login. The installed bundle remained in ~/Applications (not /Applications). Follow-up diagnostics reported SMAppService status 3 (notFound), and a filtered background-task registry inspection found no Clipboard Remix entry. The cause of the missing registration is not established. The app was reopened for manual re-registration. The user enabled Launch at Login from the installed copy, confirmed On, then confirmed the app started automatically after another logout/login. Login-session startup therefore passed after explicit re-registration on this Mac. Automatic registration migration when moving an older copy is not established.
+
+### Comet click-to-paste follow-up: v0.5.1 build 11
+
+After the build 10 smoke-pass report, the user supplied a Comet single-click paste failure showing “couldn’t confirm focus.” Build 11 requests Comet’s Chromium accessibility tree using AXEnhancedUserInterface (once per running browser after a successful request), reads the application role to activate native accessibility, and allows four seconds for Comet focus readiness because Chromium can debounce accessibility activation for two seconds. Electron retains AXManualAccessibility. Destination PID, stable field identity, clipboard-change and cancellation checks remain enforced.
+
+Automated coverage includes delayed focus readiness beyond the old one-second window. Actual Comet field-level text/image paste acceptance is pending manual retest; no automated paste into real chats is performed. The published 0.5.0 artifact is unchanged.
