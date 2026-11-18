@@ -1,14 +1,14 @@
 import AppKit
 import SwiftUI
 import ServiceManagement
+import ClipboardCore
 
 @MainActor final class LoginController: ObservableObject {
-    static let installedPath = "/Volumes/Expansion/pastebot-remix-build/Installed/Clipboard Remix.app"
     @Published private(set) var status = SMAppService.mainApp.status
     @Published private(set) var error: String?
     var registered: Bool { status == .enabled || status == .requiresApproval }
     var installed: Bool {
-        Bundle.main.bundleURL.resolvingSymlinksInPath().path == Self.installedPath
+        AppLocations.supportsLogin(bundleURL: Bundle.main.bundleURL)
     }
     var summary: String {
         switch status {
@@ -23,7 +23,7 @@ import ServiceManagement
     func toggle() {
         refresh()
         guard registered || installed else {
-            error = "Run the signed app at \(Self.installedPath). See README installation instructions. Expansion must be mounted at login."
+            error = "Move Clipboard Remix to Applications or your home Applications folder, quit this copy, and open the installed app before enabling Launch at Login."
             return
         }
         do {
@@ -43,7 +43,7 @@ struct LoginMenu: View {
         Text(controller.summary)
         Button(controller.registered ? "Disable Launch at Login" : "Enable Launch at Login") { controller.toggle() }
         if !controller.installed {
-            Text("Requires the signed app in Expansion’s Installed folder")
+            Text("Requires installation in Applications or ~/Applications")
         }
         if let error = controller.error { Text(error) }
         Button("Refresh Login Status") { controller.refresh() }

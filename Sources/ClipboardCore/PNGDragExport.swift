@@ -6,31 +6,37 @@ import UniformTypeIdentifiers
 /// Concrete file URLs support browser upload targets as well as document apps.
 public actor PNGDragExportStore {
     public static let shared = PNGDragExportStore(
-        root: URL(fileURLWithPath: "/Volumes/Expansion/pastebot-remix-build/DragExports", isDirectory: true),
-        requiredVolume: URL(fileURLWithPath: "/Volumes/Expansion", isDirectory: true)
+        root: AppLocations.dragExportDirectory,
+        createParentDirectory: true
     )
     public nonisolated let root: URL
     private let retention: TimeInterval
     private let requiredVolume: URL?
+    private let createParentDirectory: Bool
     private var active: Set<String> = []
     private let marker = ".clipboard-remix-export"
 
-    /// The parent must already exist: never create a missing volume mount path.
-    public init(root: URL, retention: TimeInterval = 7 * 24 * 60 * 60, requiredVolume: URL? = nil) {
+    /// Explicit export roots require an existing parent; the account-local default
+    /// creates its private Application Support parent on first use.
+    public init(root: URL, retention: TimeInterval = 7 * 24 * 60 * 60, requiredVolume: URL? = nil, createParentDirectory: Bool = false) {
         self.root = root
         self.retention = retention
         self.requiredVolume = requiredVolume
+        self.createParentDirectory = createParentDirectory
     }
 
     public func export(_ png: Data, now: Date = Date()) throws -> URL {
+        if createParentDirectory {
+            try FileManager.default.createDirectory(at: root.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        }
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: root.deletingLastPathComponent().path, isDirectory: &isDirectory), isDirectory.boolValue else {
-            throw HistoryError.message("Mount Expansion before dragging an image; the export folder is unavailable.")
+            throw HistoryError.message("The image export folder is unavailable. Check access to your Application Support folder.")
         }
         if let requiredVolume {
             let actualVolume = try root.deletingLastPathComponent().resourceValues(forKeys: [.volumeURLKey]).volume
             guard actualVolume?.standardizedFileURL.path == requiredVolume.standardizedFileURL.path else {
-                throw HistoryError.message("Mount Expansion before dragging an image; the export volume is unavailable.")
+                throw HistoryError.message("The configured image export volume is unavailable.")
             }
         }
         guard png.starts(with: [137, 80, 78, 71, 13, 10, 26, 10]) else {

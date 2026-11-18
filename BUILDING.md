@@ -30,7 +30,7 @@ export CLIPBOARD_BUILD_ROOT="/Volumes/Expansion/pastebot-remix-build"
 
 On another machine, set this variable to your own artifact directory. If omitted, the script uses the path above and requires Expansion to be mounted. Compiler caches, SwiftPM output, and test fixtures are placed under the build root.
 
-This setting controls **build outputs only**. The current app still has runtime path restrictions for login registration and drag exports; see the [public-release prerequisites](RELEASE.md#public-release-prerequisites).
+This setting controls **build outputs only**. Runtime history and drag exports use per-user Application Support. Login registration supports /Applications and ~/Applications, independent of the build volume.
 
 ## Build and launch
 
@@ -57,6 +57,17 @@ See [TESTING.md](TESTING.md) for coverage and manual checks.
 
 ## Installation helper
 
-`scripts/install.sh` is currently a **maintainer-only helper**. It installs into the fixed Expansion path, validates the original project’s Developer ID team, and refuses to overwrite an existing destination. It is not a general installer for forks or end users. Do not relax its signing requirement simply to install an unrelated app.
+Install a Developer ID signed build into an empty user Applications destination:
 
-For distributable builds and normal user installation, follow [RELEASE.md](RELEASE.md) after resolving its portability prerequisites.
+```sh
+./scripts/install.sh --check "/path/to/Clipboard Remix.app"
+./scripts/install.sh "/path/to/Clipboard Remix.app"
+```
+
+The default is `~/Applications/Clipboard Remix.app`; an optional second argument selects `/Applications/Clipboard Remix.app`. The helper verifies the expected bundle identifier and Apple Developer ID Application certificate chain. Set `EXPECTED_TEAM_ID` to additionally require a particular publisher. It refuses existing apps/symlinks and never changes login registration. It does not bypass notarization/Gatekeeper or turn an ad-hoc build into a distribution build.
+
+The system-wide destination may require privileges; the helper does not invoke sudo. Use the per-user default if you do not have write access.
+
+For an update, quit the old app and move a known previous version to a backup location before installing. Disable Launch at Login before relocating a registered copy; enable it again from the new supported location if desired. The helper never silently replaces an unknown app.
+
+See [RELEASE.md](RELEASE.md) for distributable builds.

@@ -50,6 +50,8 @@ enum CheckError: Error { case nilValue }
         try await drag.testProviderSnapshotAndRepresentations()
         try await drag.testExportRetentionAndMissingVolume()
         print("PASS PNG drag representations, snapshot lifetime and export cleanup")
-        print("All 13 core check groups passed.")
+        try await testPortableLocations()
+        print("PASS portable user locations, login eligibility and first-run exports")
+        print("All 14 core check groups passed.")
     }
 }

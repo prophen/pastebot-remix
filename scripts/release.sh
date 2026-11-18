@@ -9,6 +9,7 @@ fail() { print -u2 -- "$*"; exit 1; }
 [[ -d "$BUILD_ROOT" ]] || fail "Build directory is unavailable: $BUILD_ROOT"
 case "${1:-}" in
   prepare)
+    [[ -z "$(git status --porcelain)" ]] || fail 'Commit or otherwise resolve source changes before preparing a release; a clean checkout is required.'
     [[ "${SIGNING_IDENTITY:-}" == 'Developer ID Application: '* ]] || fail 'Set SIGNING_IDENTITY to the full Developer ID Application identity from security find-identity -v -p codesigning.'
     security find-identity -v -p codesigning | /usr/bin/grep -F -- "\"$SIGNING_IDENTITY\"" >/dev/null || fail 'The requested signing identity is not installed with its private key.'
     ./scripts/build.sh

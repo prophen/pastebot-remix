@@ -6,15 +6,16 @@ The workflow is **test → sign → notarize → staple → verify → publish**
 
 ## Public-release prerequisites
 
-Before presenting the current app as a general-purpose download, resolve these implementation restrictions:
+Version 0.5.0 removes the runtime dependency on the build machine’s external drive: login registration supports /Applications and ~/Applications, and preview/drag exports use per-user Application Support. The optional installer supports standard locations without a fixed signing team.
 
-- Allow Launch at Login from a supported user installation such as `/Applications/Clipboard Remix.app` or `~/Applications/Clipboard Remix.app`. `LoginController.swift` currently accepts only the maintainer’s Expansion path.
-- Move preview/drag exports to an appropriate writable per-user location and retain the snapshot/cleanup guarantees. `PNGDragExportStore.shared` currently requires the Expansion volume.
-- Replace or clearly retire the maintainer-only install helper. It has a fixed destination and validates the original project’s signing team; end users should not need it.
-- Verify a clean install from the final archive on another Mac, including minimum-OS compatibility. The current artifact is Apple Silicon only.
+For a prerelease:
 
-Changing README paths, setting `CLIPBOARD_BUILD_ROOT`, or notarizing the current binary does **not** fix those runtime restrictions. Do not advertise unrestricted login launch or image dragging until the code and installation tests support them. A deliberately limited preview must disclose them prominently.
+- Pass the automated tests, signature, notarization, stapled-ticket, and Gatekeeper checks.
+- Extract the final archive into a new directory, install it into an empty supported destination, and verify its runtime paths and launch.
+- Disclose same-Mac coverage. A second Mac or fresh user account is valuable additional testing, but is not required to prepare a prerelease.
+- Keep untested minimum-OS, hardware, login-session, and display scenarios in the release notes. Invite early testers before declaring broad compatibility.
 
+A clean same-Mac installation does not reproduce another Mac, a new account’s permissions, or a real browser download. Label exactly which checks were performed.
 ## One-time signing and notarization setup
 
 On the release Mac:
@@ -48,7 +49,7 @@ The project has successfully used Command Line Tools for this workflow without f
 
 Run on an Apple Silicon Mac, from the repository root.
 
-1. Set `CFBundleShortVersionString` to the release version and increment `CFBundleVersion` in `scripts/Info.plist`. For example, a follow-up portability release needs a new version/build rather than silently replacing build 9.
+1. Set `CFBundleShortVersionString` to the release version and increment `CFBundleVersion` in `scripts/Info.plist`. Use a new version/build for changed application code rather than silently replacing an existing artifact.
 2. Update user-facing docs and record test results. Commit all intended source changes.
 3. Choose an absolute build-output directory with enough space, and set the installed signing identity:
 
@@ -68,7 +69,7 @@ Run on an Apple Silicon Mac, from the repository root.
    ./scripts/build.sh test
    ```
 
-   Resolve unexpected changes before packaging. The release script records the commit and an unstaged diff summary, but does not reject a dirty checkout or capture every untracked file.
+   Commit intended changes before packaging. The release script rejects a dirty checkout and records the exact source commit.
 
 ## Sign the application
 
@@ -113,7 +114,7 @@ Clipboard-Remix-<version>-arm64.zip.sha256
 
 `finish` refuses to overwrite an existing final ZIP. Once it succeeds, continue to verification rather than repeatedly running it.
 
-Optional environment overrides are `NOTARY_PROFILE`, `NOTARY_KEYCHAIN` (defaults to the login Keychain), and `CLIPBOARD_BUILD_ROOT`. These do not change the app’s runtime paths.
+Optional environment overrides are `NOTARY_PROFILE`, `NOTARY_KEYCHAIN` (defaults to the login Keychain), and `CLIPBOARD_BUILD_ROOT`. The app’s runtime paths remain account-relative; these settings only affect release preparation.
 
 ## Verify the exact distribution archive
 
@@ -128,7 +129,7 @@ xcrun stapler validate "$verify_dir/Clipboard Remix.app"
 spctl --assess --type execute --verbose=2 "$verify_dir/Clipboard Remix.app"
 ```
 
-Test that archive on another Mac through a normal download/install/open flow, using the [manual acceptance checklist](TESTING.md#manual-acceptance-checklist). Verify the installation does not depend on the build machine’s folders. Record any unsupported OS versions or destinations in release notes. Do not rebuild or modify the signed app after notarization; changed binaries need a new signing/notarization pass.
+Test that archive through a fresh installation on the available Mac using the [manual acceptance checklist](TESTING.md#manual-acceptance-checklist). If another Mac or a separate user account is available, extend testing there. Verify the installed executable’s `--diagnostics` output reports a supported login location and per-user data/export directories. State the exact tested environment and untested scenarios in release notes. Do not rebuild or modify the signed app after notarization; changed binaries need a new signing/notarization pass.
 
 ## Create a GitHub draft release
 
@@ -156,6 +157,6 @@ Upload only the final application ZIP and checksum as application assets. Keep c
 
 ## Current project status
 
-As of the recorded v0.4.1 build 9 verification, signing and local use passed, including TextEdit and Comet + ChatGPT image dragging. That build was not submitted for notarization. Earlier versions’ notarization tickets do not cover this version.
+Version 0.5.0 build 10 is the first portable prerelease candidate. The existing maintainer machine already has a Developer ID identity and the `clipboard-remix-notary` profile configured; other maintainers need their own credentials. Prior versions’ notarization tickets do not cover this candidate.
 
-The existing maintainer machine already has a Developer ID identity and the `clipboard-remix-notary` profile configured. Its next release step is to resolve portability and clean-install coverage, then prepare and notarize a fresh, versioned candidate using this workflow.
+See [TESTING.md](TESTING.md) and the candidate’s release-directory receipts for the verification outcome. The GitHub draft must remain unpublished until its assets and notes are reviewed.

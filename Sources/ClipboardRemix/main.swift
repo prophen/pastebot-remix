@@ -14,7 +14,7 @@ import Combine
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         do {
-            let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("ClipboardRemix", isDirectory: true)
+            let root = AppLocations.dataDirectory
             model = AppModel(store: try HistoryStore(root: root))
         } catch {
             let alert = NSAlert(); alert.messageText = "Clipboard Remix couldn't open its history"; alert.informativeText = error.localizedDescription; alert.runModal(); NSApp.terminate(nil); return
@@ -105,6 +105,20 @@ MainActor.assumeIsolated {
         exit(1)
     }
 #endif
+    if CommandLine.arguments.contains("--diagnostics") {
+        let details: [String: Any] = [
+            "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") ?? "",
+            "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") ?? "",
+            "bundle": Bundle.main.bundleURL.path,
+            "dataDirectory": AppLocations.dataDirectory.path,
+            "dragExportDirectory": AppLocations.dragExportDirectory.path,
+            "loginLocationSupported": AppLocations.supportsLogin(bundleURL: Bundle.main.bundleURL),
+            "loginStatus": SMAppService.mainApp.status.rawValue
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: details, options: [.prettyPrinted, .sortedKeys]),
+           let output = String(data: data, encoding: .utf8) { print(output) }
+        exit(0)
+    }
     if CommandLine.arguments.contains("--login-status") {
         print("Launch at Login system status: \(SMAppService.mainApp.status.rawValue) (0=off, 1=enabled, 2=requires approval, 3=not found)")
         exit(0)

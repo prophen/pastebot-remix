@@ -6,18 +6,18 @@ A native Mac clipboard manager for copied text and screenshots. Find an earlier 
 
 - Apple Silicon Mac. Current builds target macOS 14 or later; the minimum supported OS still needs release testing.
 - Accessibility permission is required for click-to-paste. Copying a clip and pasting it yourself does not require that permission.
-- Current source version: **0.4.1**. This version has been tested locally and Developer ID signed, but its notarization and public distribution checks are not complete.
+- Current source version: **0.5.0**, prepared as an Apple Silicon prerelease. See the release’s notes for signing/notarization status and the scope of verification.
 
 Check [GitHub Releases](https://github.com/prophen/pastebot-remix/releases) for published downloads and their release-specific requirements. Download an application ZIP from **Assets**, not GitHub’s automatically generated source-code archive. If no suitable application asset is available, see [Building from source](BUILDING.md).
 
-**Current preview limitations:** Launch at Login and image dragging still depend on a developer-specific external-drive location. Installing the current app in Applications does not remove these restrictions. See [Known limitations](#known-limitations); the [release guide](RELEASE.md) lists the changes needed before a general-purpose release.
+**Prerelease coverage:** verification is limited to one Mac. Other hardware, macOS versions, and a fresh user account have not been tested. This is disclosed rather than treated as a requirement to own a second Mac.
 
 ## Install and start
 
 For a published, notarized application build:
 
 1. Download and unzip the application ZIP from the release’s Assets.
-2. Move **Clipboard Remix.app** to **Applications**, then open it.
+2. Move **Clipboard Remix.app** to **Applications** (or your home folder’s **Applications** directory), then open it.
 3. Look for the clipboard icon in the menu bar. Launch is quiet; click the icon or press **Option-Command-V** to open the palette.
 4. Copy some text or an image in another app. It appears in history while capture is running.
 
@@ -62,7 +62,7 @@ Copying identical text or equivalent normalized image content refreshes the exis
 
 Drag an image’s **large preview** into a compatible document or file-upload target after it loads. Dragging or cancelling a drag does not paste or delete the history item.
 
-Native PNG file dragging was manually verified with TextEdit and Comet + ChatGPT in build 9. Other receivers may handle file drops differently. The current external-drive restriction is listed below.
+Native PNG file dragging was manually verified with TextEdit and Comet + ChatGPT in build 9. Other receivers may handle file drops differently. Preview snapshots use your account’s Application Support folder; no developer drive is required.
 
 ### Pause capture
 
@@ -78,7 +78,7 @@ Pauses do not survive quitting: every launch starts capture unpaused. Copies mad
 
 Launch at Login is opt-in. The gear menu shows the system’s registration status and provides enable, disable, refresh, and Login Items settings controls. **Approval required** means macOS needs your approval in System Settings.
 
-The current preview only permits enabling this feature from its developer-specific installed path. This must be made portable before it can be offered as a normal Applications-folder feature.
+Install in **/Applications** or **~/Applications** before enabling this feature. Copies running from Downloads, a temporary release folder, or a mounted archive cannot register. Disable Launch at Login before moving an already registered app, then open the new installed copy and enable it again if desired. Registration never happens automatically.
 
 ## Storage, privacy, and deletion
 
@@ -101,11 +101,10 @@ Oldest unpinned entries are removed first. Favorites count toward the limits but
 
 **Delete Selected** can remove a favorite. **Clear History** removes all saved entries, including favorites and their history image files, after confirmation. Neither action clears the current system clipboard.
 
-Image previews prepare independent PNG snapshots for dragging. These stay available while a preview or drag uses them, then receive a seven-day grace period. Expired inactive snapshots are cleaned on the next export. These copies can therefore outlive deleting or clearing history.
+Image previews prepare independent PNG snapshots in `~/Library/Application Support/ClipboardRemix/DragExports/` for dragging. These stay available while a preview or drag uses them, then receive a seven-day grace period. Expired inactive snapshots are cleaned on the next export. These copies can therefore outlive deleting or clearing history.
 
 ## Known limitations
 
-- **Release portability:** Launch at Login currently requires `/Volumes/Expansion/pastebot-remix-build/Installed/Clipboard Remix.app`. Preview/drag exports require `/Volumes/Expansion/pastebot-remix-build/DragExports` on that mounted volume. These are current implementation restrictions, not recommended folders for other users to create. A different build-output directory does not change them.
 - Capture polls every 0.4 seconds; very rapid copies may be missed. A full processing queue reports skipped captures.
 - Plain text and still PNG/TIFF images are supported. Rich text becomes plain text. Files, OCR, editing, cloud sync, and collections are not supported.
 - Shortcut selection is limited to Option-Command-V and Shift-Option-Command-V. Right-click the menu-bar icon to switch; registration failures are reported.

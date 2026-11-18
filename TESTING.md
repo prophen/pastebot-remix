@@ -10,7 +10,7 @@ Run from the repository root with a configured build directory:
 ./scripts/build.sh test
 ```
 
-The script runs **13 core check groups** plus native palette/model checks. It uses isolated named pasteboards, disposable history databases, and test preferences. It does not paste into real apps or clear real history. Native test palettes may briefly appear.
+The script runs **14 core check groups** plus native palette/model checks. It uses isolated named pasteboards, disposable history databases, and test preferences. It does not paste into real apps or clear real history. Native test palettes may briefly appear.
 
 Coverage includes:
 
@@ -24,6 +24,7 @@ Coverage includes:
 - Copy feedback, rapid replacement, expiry, error preservation, and keyboard dismissal.
 - Exact text and normalized-image deduplication, pins, hash collisions, transparency, and recopy.
 - Native PNG file-URL drag representations, snapshot lifetime, repeated exports, cleanup, and volume checks.
+- Portable per-user storage, standard Applications login eligibility, and first-run/repeated exports with an alternate test home.
 
 Test fixtures use the explicit build-volume path supplied by the script because Foundation may ignore TMPDIR on macOS.
 
@@ -53,6 +54,13 @@ For v0.4.1 build 9:
 - Version 0.4.1 was signed locally but has not completed this project’s notarization/public-distribution verification.
 
 The [verification history](docs/VERIFICATION-HISTORY.md) preserves per-build findings and fixes. Historical “pending” statements describe that build and may be superseded later.
+
+## Prerelease verification: v0.5.0 build 10
+
+- All 14 core groups and native palette/model checks pass. New tests use an alternate home with spaces and confirm login eligibility only in standard Applications locations, plus first-run/repeated exports in per-user Application Support.
+- Installation helper checks verify Developer ID signing and an optional publisher team, accept standard destinations, and reject invalid destinations, mismatched signatures, and existing apps without replacement.
+- Build artifacts and isolated fixtures remain on Expansion; distributed runtime storage does not depend on that volume.
+- Same-Mac archive/signature/notarization/install verification is being recorded for this candidate. Another Mac, a separate macOS user account, minimum-OS coverage, and a real logout/login session are not claimed.
 
 ## Report a bug
 
